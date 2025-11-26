@@ -13,9 +13,9 @@ import time
 # )
 from app.core.config import settings
 # from app.core.monitoring import setup_monitoring
-# from app.db.mariadb import mariadb_manager
-# from app.db.timescale import timescale_manager
-# from app.db.redis import redis_manager
+from app.db.mariadb import mariadb_manager
+from app.db.timescale import timescale_manager
+from app.db.redis import redis_manager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting TradeFlow Pro API...")
-    # await mariadb_manager.connect()
-    # await timescale_manager.connect()
-    # await redis_manager.connect()
+    await mariadb_manager.connect()
+    await timescale_manager.connect()
+    await redis_manager.connect()
     # setup_monitoring(app)
     logger.info("✓ All systems operational")
     
@@ -34,9 +34,9 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down...")
-    # await mariadb_manager.disconnect()
-    # await timescale_manager.disconnect()
-    # await redis_manager.disconnect()
+    await mariadb_manager.disconnect()
+    await timescale_manager.disconnect()
+    await redis_manager.disconnect()
 
 app = FastAPI(
     title="TradeFlow Pro API",
