@@ -1,0 +1,16 @@
+fastapi>=0.104.0
+uvicorn[standard]
+gunicorn
+aiohttp
+aiomysql
+asyncpg
+redis
+celery[redis]
+python-multipart
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+prometheus-client
+sentry-sdk
+sqlalchemy
+alembic

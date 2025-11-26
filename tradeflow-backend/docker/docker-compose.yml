@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MARIADB_HOST=mariadb
+      - TIMESCALE_HOST=timescaledb
+      - REDIS_HOST=redis
+    depends_on:
+      - mariadb
+      - timescaledb
+      - redis
+
+  mariadb:
+    image: mariadb:11
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=tradeflow_db
+      - MYSQL_USER=tradeflow
+      - MYSQL_PASSWORD=tradeflow
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      - POSTGRES_USER=tradeflow
+      - POSTGRES_PASSWORD=tradeflow
+      - POSTGRES_DB=market_data_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7.2
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mariadb_data:
+  timescaledb_data:
+  redis_data:
