@@ -7,8 +7,8 @@ import time
 
 # Import routers (commented out until they are implemented to avoid errors)
 from app.api.v1 import (
-    auth, 
-    # market_data, charts, indicators,
+    auth, market_data,
+    # charts, indicators,
     # orderflow, volume_profile, alerts,
     # workspaces, social, websocket
 )
@@ -69,7 +69,7 @@ async def health_check():
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
-# app.include_router(market_data.router, prefix="/api/v1/market-data", tags=["Market Data"])
+app.include_router(market_data.router, prefix="/api/v1/market-data", tags=["Market Data"])
 # app.include_router(charts.router, prefix="/api/v1/charts", tags=["Charts"])
 # app.include_router(indicators.router, prefix="/api/v1/indicators", tags=["Indicators"])
 # app.include_router(orderflow.router, prefix="/api/v1/orderflow", tags=["Order Flow"])
