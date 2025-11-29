@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, Time } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, ISeriesApi, Time, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { Bar } from '@/types/chart';
 
 interface TVChartProps {
@@ -72,7 +72,7 @@ export const TVChart: React.FC<TVChartProps> = ({
         chartRef.current = chart;
 
         // Main Candlestick Series
-        const candleSeries = chart.addCandlestickSeries({
+        const candleSeries = chart.addSeries(CandlestickSeries, {
             upColor: colors.candleUp,
             downColor: colors.candleDown,
             borderVisible: false,
@@ -82,7 +82,7 @@ export const TVChart: React.FC<TVChartProps> = ({
         candleSeriesRef.current = candleSeries;
 
         // CVD Series (Line) - Placed at bottom using separate scale
-        const cvdSeries = chart.addLineSeries({
+        const cvdSeries = chart.addSeries(LineSeries, {
             color: colors.cvdColor,
             lineWidth: 2,
             priceScaleId: 'cvd', // Separate scale
