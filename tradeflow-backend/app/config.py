@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "development_secret_key"  # Default for dev
     
     # CORS
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://ns3366383.ip-37-187-77.eu:3000"]
     
     # MariaDB
     MARIADB_HOST: str = "localhost"
