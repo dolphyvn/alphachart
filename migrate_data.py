@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Source Database Configuration (MariaDB on Host)
 SOURCE_DB_CONFIG = {
-    'host': '127.0.0.1',  # Localhost since script runs on the server
-    'port': 3306,
+    'unix_socket': '/var/run/mysqld/mysqld.sock',
     'user': 'root',
     'password': '1qaz@WSX123', # CAUTION: Hardcoded password. Use env vars in production.
     'db': 'market_data',
