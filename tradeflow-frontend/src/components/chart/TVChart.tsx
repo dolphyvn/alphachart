@@ -162,6 +162,8 @@ export const TVChart: React.FC<TVChartProps> = ({
         );
 
         if (uniqueCandleData.length > 0) {
+            console.log('TVChart: First candle:', uniqueCandleData[0]);
+            console.log('TVChart: Last candle:', uniqueCandleData[uniqueCandleData.length - 1]);
             candleSeriesRef.current.setData(uniqueCandleData);
         }
 
