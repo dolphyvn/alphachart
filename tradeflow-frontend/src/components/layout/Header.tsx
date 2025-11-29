@@ -1,11 +1,12 @@
 import React from 'react';
+import { Indicator } from '@/types/chart';
 
 interface HeaderProps {
     symbol: string;
     onSymbolChange: (s: string) => void;
     timeframe: string;
     onTimeframeChange: (t: string) => void;
-    onAddIndicator: (type: string) => void;
+    onAddIndicator: (type: Indicator['type']) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
