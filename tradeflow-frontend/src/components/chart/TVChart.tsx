@@ -148,9 +148,15 @@ export const TVChart: React.FC<TVChartProps> = ({
             close: bar.close,
         }));
 
-        // Sort data by time just in case
+        // Sort data by time just in case and remove duplicates
         candleData.sort((a, b) => (a.time as number) - (b.time as number));
-        candleSeriesRef.current.setData(candleData);
+        const uniqueCandleData = candleData.filter((item, index, self) =>
+            index === self.findIndex((t) => (t.time as number) === (item.time as number))
+        );
+
+        if (uniqueCandleData.length > 0) {
+            candleSeriesRef.current.setData(uniqueCandleData);
+        }
 
         // Map CVD Data
         if (cvd.length > 0) {
@@ -159,7 +165,13 @@ export const TVChart: React.FC<TVChartProps> = ({
                 value: c.cumulative_delta
             }));
             cvdData.sort((a, b) => (a.time as number) - (b.time as number));
-            cvdSeriesRef.current.setData(cvdData);
+            const uniqueCvdData = cvdData.filter((item, index, self) =>
+                index === self.findIndex((t) => (t.time as number) === (item.time as number))
+            );
+
+            if (uniqueCvdData.length > 0) {
+                cvdSeriesRef.current.setData(uniqueCvdData);
+            }
         }
 
     }, [bars, cvd, theme, colors]);
