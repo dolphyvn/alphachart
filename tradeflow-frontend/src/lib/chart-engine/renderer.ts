@@ -27,6 +27,10 @@ export class ChartRenderer {
         this.timeScale = new TimeScale(width);
     }
 
+    getTimeScale() {
+        return this.timeScale;
+    }
+
     resize(width: number, height: number) {
         this.width = width;
         this.height = height;
