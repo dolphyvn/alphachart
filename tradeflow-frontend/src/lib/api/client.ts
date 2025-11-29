@@ -58,5 +58,13 @@ export const apiClient = {
         if (endTime) url += `&end_time=${endTime}`;
         const response = await fetch(url);
         return response.json();
+    },
+
+    async getCVD(symbol: string, timeframe: string, startTime?: string, endTime?: string): Promise<any[]> {
+        let url = `${API_BASE_URL}/market-data/cvd?symbol=${symbol}&timeframe=${timeframe}`;
+        if (startTime) url += `&start_time=${startTime}`;
+        if (endTime) url += `&end_time=${endTime}`;
+        const response = await fetch(url);
+        return response.json();
     }
 };

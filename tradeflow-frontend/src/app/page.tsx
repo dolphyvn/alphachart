@@ -6,6 +6,7 @@ import { useIndicators } from '@/hooks/useIndicators';
 import { useDrawings } from '@/hooks/useDrawings';
 import { useVolumeProfile } from '@/hooks/useVolumeProfile';
 import { useFootprint } from '@/hooks/useFootprint';
+import { useCVD } from '@/hooks/useCVD';
 import { Header } from '@/components/layout/Header';
 import { useState } from 'react';
 
@@ -18,6 +19,7 @@ export default function Home() {
   const { drawings, activeTool, setActiveTool, addDrawing, updateDrawing } = useDrawings();
   const { profile: volumeProfile } = useVolumeProfile(symbol, bars);
   const { footprintData } = useFootprint(symbol, timeframe, bars);
+  const { cvdData } = useCVD(symbol, timeframe, bars);
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
@@ -51,6 +53,7 @@ export default function Home() {
           onUpdateDrawing={updateDrawing}
           volumeProfile={volumeProfile}
           footprint={footprintData}
+          cvd={cvdData}
         />
 
         {/* Active Indicators List */}

@@ -63,7 +63,7 @@ export class ChartRenderer {
         // TimeScale width update if needed
     }
 
-    render(bars: Bar[], indicators: Indicator[], drawings: Drawing[], volumeProfile?: any[], footprint?: any[]) {
+    render(bars: Bar[], indicators: Indicator[], drawings: Drawing[], volumeProfile?: any[], footprint?: any[], cvd?: any[]) {
         // Update Price Scale based on visible bars
         if (bars.length > 0) {
             const min = Math.min(...bars.map(b => b.low));
@@ -90,11 +90,64 @@ export class ChartRenderer {
             this.drawCandlesticks(bars);
         }
 
+        // Draw CVD (overlay at bottom)
+        if (cvd && cvd.length > 0) {
+            this.drawCVD(bars, cvd);
+        }
+
         // Draw indicators
         this.drawIndicators(bars, indicators);
 
         // Draw drawings
         this.drawDrawings(bars, drawings);
+    }
+
+    private drawCVD(bars: Bar[], cvd: any[]) {
+        // Draw CVD as a line chart at the bottom 20% of the chart
+        // Need a separate scale for CVD
+        const cvdHeight = this.height * 0.2;
+        const cvdTop = this.height - cvdHeight;
+
+        const minCVD = Math.min(...cvd.map(c => c.cumulative_delta));
+        const maxCVD = Math.max(...cvd.map(c => c.cumulative_delta));
+        const range = maxCVD - minCVD || 1;
+
+        const cvdY = (val: number) => {
+            return cvdTop + cvdHeight - ((val - minCVD) / range) * cvdHeight;
+        };
+
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = '#f59e0b'; // Amber-500
+        this.ctx.lineWidth = 2;
+
+        let started = false;
+        bars.forEach((bar, index) => {
+            const x = this.timeScale.indexToX(index);
+            const point = cvd.find(c => Math.abs(new Date(c.time).getTime() - bar.timestamp * 1000) < 1000);
+
+            if (point) {
+                const y = cvdY(point.cumulative_delta);
+                if (!started) {
+                    this.ctx.moveTo(x, y);
+                    started = true;
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+        });
+        this.ctx.stroke();
+
+        // Draw zero line if visible
+        if (minCVD < 0 && maxCVD > 0) {
+            const yZero = cvdY(0);
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = '#9ca3af'; // Gray-400
+            this.ctx.setLineDash([4, 4]);
+            this.ctx.moveTo(0, yZero);
+            this.ctx.lineTo(this.width, yZero);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+        }
     }
 
     private drawFootprint(bars: Bar[], footprint: any[]) {

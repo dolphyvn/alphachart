@@ -14,6 +14,7 @@ interface ChartContainerProps {
     onUpdateDrawing?: (id: string, updates: Partial<Drawing>) => void;
     volumeProfile?: any[];
     footprint?: any[];
+    cvd?: any[];
 }
 
 export const ChartContainer: React.FC<ChartContainerProps> = ({
@@ -24,7 +25,8 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     onAddDrawing,
     onUpdateDrawing,
     volumeProfile = [],
-    footprint = []
+    footprint = [],
+    cvd = []
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -59,6 +61,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
                 onUpdateDrawing={onUpdateDrawing}
                 volumeProfile={volumeProfile}
                 footprint={footprint}
+                cvd={cvd}
                 width={dimensions.width}
                 height={dimensions.height}
             />
