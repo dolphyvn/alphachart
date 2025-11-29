@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
-import { ChartCanvas } from './ChartCanvas';
+// import { ChartCanvas } from './ChartCanvas';
+import { TVChart } from './TVChart';
 import { Bar, Indicator, Drawing } from '@/types/chart';
 import { DrawingTool } from '@/hooks/useDrawings';
 
@@ -52,9 +53,9 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     return (
         <div ref={containerRef} className="w-full h-full min-h-[500px] bg-background border rounded-lg overflow-hidden relative">
             <div className="absolute top-4 left-4 z-10 text-sm font-medium text-muted-foreground">
-                TradeFlow Pro Chart
+                TradeFlow Pro Chart (Lightweight Charts)
             </div>
-            <ChartCanvas
+            {/* <ChartCanvas
                 bars={bars}
                 indicators={indicators}
                 drawings={drawings}
@@ -66,6 +67,11 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
                 cvd={cvd}
                 width={dimensions.width}
                 height={dimensions.height}
+                theme={theme}
+            /> */}
+            <TVChart
+                bars={bars}
+                cvd={cvd}
                 theme={theme}
             />
         </div>
