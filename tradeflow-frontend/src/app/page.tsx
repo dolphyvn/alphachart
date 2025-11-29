@@ -44,7 +44,7 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="flex-1 w-full relative min-h-[600px]">
+      <div className="flex-1 w-full relative h-[calc(100vh-64px)]">
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-20">
             Loading...

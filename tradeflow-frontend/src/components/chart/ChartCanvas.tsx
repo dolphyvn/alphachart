@@ -112,6 +112,11 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
                 if (dragTarget.current === 'chart') {
                     const timeScale = rendererRef.current.getTimeScale();
                     timeScale.setOffset(timeScale.getOffset() - dx);
+
+                    // Handle vertical panning (Price)
+                    if (Math.abs(dy) > 0) {
+                        rendererRef.current.shiftPriceScale(dy);
+                    }
                 } else if (dragTarget.current === 'timeAxis') {
                     const timeScale = rendererRef.current.getTimeScale();
                     // Zoom time scale

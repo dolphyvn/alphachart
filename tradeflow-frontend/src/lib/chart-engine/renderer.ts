@@ -161,9 +161,27 @@ export class ChartRenderer {
         this.timeScale = new TimeScale(this.mainArea.w);
     }
 
+    private autoScale: boolean = true;
+
+    // ... (existing properties)
+
+    setAutoScale(enabled: boolean) {
+        this.autoScale = enabled;
+    }
+
+    shiftPriceScale(dy: number) {
+        this.autoScale = false;
+        const range = this.priceScale.getMaxPrice() - this.priceScale.getMinPrice();
+        const priceDelta = (dy / this.mainArea.h) * range;
+        this.priceScale.setRange(
+            this.priceScale.getMinPrice() + priceDelta,
+            this.priceScale.getMaxPrice() + priceDelta
+        );
+    }
+
     render(bars: Bar[], indicators: Indicator[], drawings: Drawing[], volumeProfile?: any[], footprint?: any[], cvd?: any[]) {
-        // Update Price Scale based on visible bars
-        if (bars.length > 0) {
+        // Update Price Scale based on visible bars ONLY if autoScale is true
+        if (this.autoScale && bars.length > 0) {
             const min = Math.min(...bars.map(b => b.low));
             const max = Math.max(...bars.map(b => b.high));
             this.priceScale.setRange(min, max);

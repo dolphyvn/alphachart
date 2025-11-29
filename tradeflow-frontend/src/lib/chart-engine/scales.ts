@@ -27,6 +27,14 @@ export class PriceScale {
         return this.scale;
     }
 
+    getMinPrice() {
+        return this.minPrice;
+    }
+
+    getMaxPrice() {
+        return this.maxPrice;
+    }
+
     priceToY(price: number): number {
         const range = this.maxPrice - this.minPrice;
         if (range === 0) return this.height / 2;
