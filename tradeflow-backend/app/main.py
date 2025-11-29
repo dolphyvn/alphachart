@@ -12,7 +12,7 @@ from app.api.v1 import (
     # orderflow, volume_profile, alerts,
     # workspaces, social, websocket
 )
-from app.core.config import settings
+from app.config import settings
 # from app.core.monitoring import setup_monitoring
 from app.db.mariadb import mariadb_manager
 from app.db.timescale import timescale_manager

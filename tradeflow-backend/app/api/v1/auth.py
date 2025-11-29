@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
 
 from app.core.security import create_access_token, get_password_hash, verify_password
-from app.core.config import settings
+from app.config import settings
 from app.db.mariadb import mariadb_manager
 from app.db.models import User # We need to define models first!
 

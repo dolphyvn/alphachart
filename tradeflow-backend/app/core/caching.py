@@ -2,7 +2,7 @@ from functools import wraps
 import json
 from typing import Callable, Any
 from app.db.redis import redis_manager
-from app.core.config import settings
+from app.config import settings
 
 def cache_key(*args, **kwargs) -> str:
     """Generate a cache key from arguments"""
