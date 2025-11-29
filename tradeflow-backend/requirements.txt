@@ -15,3 +15,5 @@ sentry-sdk
 sqlalchemy
 alembic
 pydantic[email]
+pandas
+numpy
