@@ -63,7 +63,7 @@ export class ChartRenderer {
         // TimeScale width update if needed
     }
 
-    render(bars: Bar[], indicators: Indicator[], drawings: Drawing[], volumeProfile?: any[]) {
+    render(bars: Bar[], indicators: Indicator[], drawings: Drawing[], volumeProfile?: any[], footprint?: any[]) {
         // Update Price Scale based on visible bars
         if (bars.length > 0) {
             const min = Math.min(...bars.map(b => b.low));
@@ -82,14 +82,111 @@ export class ChartRenderer {
             this.drawVolumeProfile(volumeProfile);
         }
 
-        // Draw candlesticks
-        this.drawCandlesticks(bars);
+        // Draw footprint (replaces candlesticks if present)
+        if (footprint && footprint.length > 0) {
+            this.drawFootprint(bars, footprint);
+        } else {
+            // Draw candlesticks
+            this.drawCandlesticks(bars);
+        }
 
         // Draw indicators
         this.drawIndicators(bars, indicators);
 
         // Draw drawings
         this.drawDrawings(bars, drawings);
+    }
+
+    private drawFootprint(bars: Bar[], footprint: any[]) {
+        const barSpacing = this.timeScale.getBarSpacing();
+        const barWidth = barSpacing * 0.8;
+
+        // Don't draw footprint if zoomed out too much
+        if (barWidth < 20) {
+            this.drawCandlesticks(bars);
+            return;
+        }
+
+        bars.forEach((bar, index) => {
+            const x = this.timeScale.indexToX(index);
+            if (x < -barWidth || x > this.width + barWidth) return;
+
+            // Find matching footprint data
+            // Assuming footprint data is aligned with bars
+            const barData = footprint.find(f => Math.abs(new Date(f.time).getTime() - bar.timestamp * 1000) < 1000); // 1s tolerance
+
+            if (!barData) {
+                // Fallback to candle
+                this.drawCandle(bar, x, barWidth);
+                return;
+            }
+
+            // Draw candle outline
+            const yHigh = this.priceScale.priceToY(bar.high);
+            const yLow = this.priceScale.priceToY(bar.low);
+            const yOpen = this.priceScale.priceToY(bar.open);
+            const yClose = this.priceScale.priceToY(bar.close);
+            const isGreen = bar.close >= bar.open;
+
+            this.ctx.strokeStyle = isGreen ? '#22c55e' : '#ef4444';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(x - barWidth / 2, Math.min(yOpen, yClose), barWidth, Math.abs(yClose - yOpen));
+
+            // Wicks
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, yHigh);
+            this.ctx.lineTo(x, Math.min(yOpen, yClose));
+            this.ctx.moveTo(x, Math.max(yOpen, yClose));
+            this.ctx.lineTo(x, yLow);
+            this.ctx.stroke();
+
+            // Draw volume clusters
+            const cellHeight = this.priceScale.priceToY(0) - this.priceScale.priceToY(0.01); // Approx height of 1 tick
+            // Actually we should calculate height based on price levels in data
+
+            barData.levels.forEach((level: any) => {
+                const y = this.priceScale.priceToY(level.price);
+                const totalVol = level.bid_volume + level.ask_volume;
+                if (totalVol === 0) return;
+
+                // Draw cell background based on delta? Or just text?
+                // Let's draw text: Bid x Ask
+
+                this.ctx.font = '10px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+
+                // Left side (Bid)
+                this.ctx.fillStyle = '#ef4444'; // Sellers hit bid
+                this.ctx.fillText(Math.round(level.bid_volume).toString(), x - barWidth / 4, y);
+
+                // Right side (Ask)
+                this.ctx.fillStyle = '#22c55e'; // Buyers lift ask
+                this.ctx.fillText(Math.round(level.ask_volume).toString(), x + barWidth / 4, y);
+            });
+        });
+    }
+
+    private drawCandle(bar: Bar, x: number, barWidth: number) {
+        const yHigh = this.priceScale.priceToY(bar.high);
+        const yLow = this.priceScale.priceToY(bar.low);
+        const yOpen = this.priceScale.priceToY(bar.open);
+        const yClose = this.priceScale.priceToY(bar.close);
+
+        const isGreen = bar.close >= bar.open;
+        this.ctx.fillStyle = isGreen ? '#22c55e' : '#ef4444';
+        this.ctx.strokeStyle = isGreen ? '#22c55e' : '#ef4444';
+
+        // Wick
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, yHigh);
+        this.ctx.lineTo(x, yLow);
+        this.ctx.stroke();
+
+        // Body
+        const bodyHeight = Math.max(Math.abs(yClose - yOpen), 1);
+        const bodyTop = Math.min(yOpen, yClose);
+        this.ctx.fillRect(x - barWidth / 2, bodyTop, barWidth, bodyHeight);
     }
 
     private drawVolumeProfile(profile: any[]) {

@@ -13,6 +13,7 @@ interface ChartContainerProps {
     onAddDrawing?: (drawing: Drawing) => void;
     onUpdateDrawing?: (id: string, updates: Partial<Drawing>) => void;
     volumeProfile?: any[];
+    footprint?: any[];
 }
 
 export const ChartContainer: React.FC<ChartContainerProps> = ({
@@ -22,7 +23,8 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     activeTool = 'cursor',
     onAddDrawing,
     onUpdateDrawing,
-    volumeProfile = []
+    volumeProfile = [],
+    footprint = []
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -56,6 +58,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
                 onAddDrawing={onAddDrawing}
                 onUpdateDrawing={onUpdateDrawing}
                 volumeProfile={volumeProfile}
+                footprint={footprint}
                 width={dimensions.width}
                 height={dimensions.height}
             />
