@@ -120,7 +120,7 @@ class MarketDataService:
             interval = self._parse_timeframe(timeframe)
             query = """
                 SELECT 
-                    time_bucket($1, time) AS bucket,
+                    time_bucket($1::interval, time) AS bucket,
                     $2 AS symbol,
                     $3 AS timeframe,
                     first(open, time) AS open,
