@@ -51,7 +51,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     }, []);
 
     return (
-        <div ref={containerRef} className="w-full h-full min-h-[500px] bg-background border rounded-lg overflow-hidden relative">
+        <div ref={containerRef} className="w-full h-full min-h-[500px] bg-background border rounded-lg overflow-hidden relative" style={{ height: '100%' }}>
             <div className="absolute top-4 left-4 z-10 text-sm font-medium text-muted-foreground">
                 TradeFlow Pro Chart (Lightweight Charts)
             </div>
