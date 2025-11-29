@@ -14,3 +14,4 @@ prometheus-client
 sentry-sdk
 sqlalchemy
 alembic
+pydantic[email]
