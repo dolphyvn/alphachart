@@ -63,7 +63,7 @@ export class ChartRenderer {
         // TimeScale width update if needed
     }
 
-    render(bars: Bar[], indicators: Indicator[], drawings: Drawing[]) {
+    render(bars: Bar[], indicators: Indicator[], drawings: Drawing[], volumeProfile?: any[]) {
         // Update Price Scale based on visible bars
         if (bars.length > 0) {
             const min = Math.min(...bars.map(b => b.low));
@@ -77,6 +77,11 @@ export class ChartRenderer {
         // Draw grid
         this.drawGrid();
 
+        // Draw volume profile (behind everything)
+        if (volumeProfile && volumeProfile.length > 0) {
+            this.drawVolumeProfile(volumeProfile);
+        }
+
         // Draw candlesticks
         this.drawCandlesticks(bars);
 
@@ -85,6 +90,39 @@ export class ChartRenderer {
 
         // Draw drawings
         this.drawDrawings(bars, drawings);
+    }
+
+    private drawVolumeProfile(profile: any[]) {
+        if (profile.length === 0) return;
+
+        // Calculate max volume for scaling
+        const maxVolume = Math.max(...profile.map(p => p.volume));
+        const profileWidth = this.width * 0.15; // Use 15% of chart width
+
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.3;
+
+        profile.forEach(level => {
+            const y = this.priceScale.priceToY(level.price);
+            const barWidth = (level.volume / maxVolume) * profileWidth;
+
+            // Draw bid volume (green)
+            if (level.bid_volume > 0) {
+                const bidWidth = (level.bid_volume / level.volume) * barWidth;
+                this.ctx.fillStyle = '#22c55e';
+                this.ctx.fillRect(this.width - profileWidth, y - 2, bidWidth, 4);
+            }
+
+            // Draw ask volume (red)
+            if (level.ask_volume > 0) {
+                const askWidth = (level.ask_volume / level.volume) * barWidth;
+                const bidWidth = (level.bid_volume / level.volume) * barWidth;
+                this.ctx.fillStyle = '#ef4444';
+                this.ctx.fillRect(this.width - profileWidth + bidWidth, y - 2, askWidth, 4);
+            }
+        });
+
+        this.ctx.restore();
     }
 
     private drawDrawings(bars: Bar[], drawings: Drawing[]) {

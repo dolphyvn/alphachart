@@ -12,6 +12,7 @@ interface ChartCanvasProps {
     activeTool?: DrawingTool;
     onAddDrawing?: (drawing: Drawing) => void;
     onUpdateDrawing?: (id: string, updates: Partial<Drawing>) => void;
+    volumeProfile?: any[];
     width: number;
     height: number;
 }
@@ -23,6 +24,7 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
     activeTool = 'cursor',
     onAddDrawing,
     onUpdateDrawing,
+    volumeProfile = [],
     width,
     height
 }) => {
@@ -42,9 +44,9 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
             rendererRef.current.resize(width, height);
         }
 
-        rendererRef.current.render(bars, indicators, drawings);
+        rendererRef.current.render(bars, indicators, drawings, volumeProfile);
 
-    }, [bars, indicators, drawings, width, height]);
+    }, [bars, indicators, drawings, volumeProfile, width, height]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!rendererRef.current) return;
@@ -87,7 +89,7 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
                 const timeScale = rendererRef.current.getTimeScale();
                 timeScale.setOffset(timeScale.getOffset() - dx);
                 lastX.current = e.clientX;
-                rendererRef.current.render(bars, indicators, drawings);
+                rendererRef.current.render(bars, indicators, drawings, volumeProfile);
             }
         } else {
             if (currentDrawingId.current && onUpdateDrawing) {
@@ -127,7 +129,7 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
             const timeScale = rendererRef.current.getTimeScale();
             const newSpacing = Math.max(1, Math.min(100, timeScale.getBarSpacing() * (e.deltaY < 0 ? 1.1 : 0.9)));
             timeScale.setBarSpacing(newSpacing);
-            rendererRef.current.render(bars, indicators, drawings);
+            rendererRef.current.render(bars, indicators, drawings, volumeProfile);
         }
     };
 

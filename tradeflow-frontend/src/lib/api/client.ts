@@ -42,5 +42,13 @@ export const apiClient = {
     async getBollinger(symbol: string, timeframe: string, period: number = 20, std_dev: number = 2, limit: number = 500): Promise<any[]> {
         const response = await fetch(`${API_BASE_URL}/indicators/bollinger?symbol=${symbol}&timeframe=${timeframe}&period=${period}&std_dev=${std_dev}&limit=${limit}`);
         return response.json();
+    },
+
+    async getVolumeProfile(symbol: string, startTime?: string, endTime?: string): Promise<any[]> {
+        let url = `${API_BASE_URL}/market-data/volume-profile?symbol=${symbol}`;
+        if (startTime) url += `&start_time=${startTime}`;
+        if (endTime) url += `&end_time=${endTime}`;
+        const response = await fetch(url);
+        return response.json();
     }
 };

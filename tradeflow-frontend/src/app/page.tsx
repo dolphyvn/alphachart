@@ -4,6 +4,7 @@ import { ChartContainer } from '@/components/chart/ChartContainer';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useIndicators } from '@/hooks/useIndicators';
 import { useDrawings } from '@/hooks/useDrawings';
+import { useVolumeProfile } from '@/hooks/useVolumeProfile';
 import { Header } from '@/components/layout/Header';
 import { useState } from 'react';
 
@@ -14,6 +15,7 @@ export default function Home() {
   const { bars, isLoading, error } = useMarketData(symbol, timeframe);
   const { indicators, addIndicator, removeIndicator } = useIndicators(symbol, timeframe);
   const { drawings, activeTool, setActiveTool, addDrawing, updateDrawing } = useDrawings();
+  const { profile: volumeProfile } = useVolumeProfile(symbol, bars);
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
@@ -45,6 +47,7 @@ export default function Home() {
           activeTool={activeTool}
           onAddDrawing={addDrawing}
           onUpdateDrawing={updateDrawing}
+          volumeProfile={volumeProfile}
         />
 
         {/* Active Indicators List */}
