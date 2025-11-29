@@ -15,8 +15,8 @@ export function useMarketData(symbol: string, timeframe: string) {
             try {
                 const data = await apiClient.getBars(symbol, timeframe);
                 // Convert API data to internal Bar format
-                const formattedBars: Bar[] = data.map(b => ({
-                    timestamp: new Date(b.timestamp).getTime() / 1000, // Convert ISO to unix timestamp (seconds)
+                const formattedBars: Bar[] = data.map((b: any) => ({
+                    timestamp: new Date(b.time || b.timestamp).getTime() / 1000, // Convert ISO to unix timestamp (seconds)
                     open: b.open,
                     high: b.high,
                     low: b.low,

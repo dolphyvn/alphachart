@@ -1,7 +1,7 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://ns3366383.ip-37-187-77.eu:8001/api/v1';
 
 export interface BarData {
-    timestamp: string;
+    time: string;
     open: number;
     high: number;
     low: number;
