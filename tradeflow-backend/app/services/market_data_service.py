@@ -133,7 +133,7 @@ class MarketDataService:
                     sum(number_of_trades) AS number_of_trades,
                     last(open_interest, time) AS open_interest
                 FROM market_data
-                WHERE symbol = $2
+                WHERE symbol = 'XAUUSD'
                 GROUP BY bucket
                 ORDER BY bucket DESC
                 LIMIT $4
