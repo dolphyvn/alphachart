@@ -1,4 +1,3 @@
-```javascript
 'use client';
 
 import { ChartContainer } from '@/components/chart/ChartContainer';
@@ -10,25 +9,25 @@ import { useState } from 'react';
 export default function Home() {
   const [symbol, setSymbol] = useState('XAUUSD'); // Default symbol
   const [timeframe, setTimeframe] = useState('1s');
-  
+
   const { bars, isLoading, error } = useMarketData(symbol, timeframe);
   const { indicators, addIndicator, removeIndicator } = useIndicators(symbol, timeframe);
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
-      <Header 
-        symbol={symbol} 
+      <Header
+        symbol={symbol}
         onSymbolChange={setSymbol}
         timeframe={timeframe}
         onTimeframeChange={setTimeframe}
         onAddIndicator={addIndicator}
       />
 
-      <div className="flex-1 w-full relative">
+      <div className="flex-1 w-full relative min-h-[600px]">
         {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-20">
-                Loading...
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-20">
+            Loading...
+          </div>
         )}
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-20 text-red-500">
