@@ -254,6 +254,41 @@ class MarketDataService:
             
         return [{'time': k, 'levels': v} for k, v in result.items()]
 
+    async def get_cvd_data(self, symbol: str, timeframe: str, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
+        """
+        Get Cumulative Volume Delta (CVD) data.
+        """
+        interval = self._parse_timeframe(timeframe)
+        
+        query = """
+            SELECT 
+                time_bucket($1, time) AS bucket,
+                sum(bid_volume) as bid_volume,
+                sum(ask_volume) as ask_volume
+            FROM market_data
+            WHERE symbol = $2 AND timeframe = '1s' AND time >= $3 AND time <= $4
+            GROUP BY bucket
+            ORDER BY bucket ASC
+        """
+        
+        rows = await timescale_manager.fetch(query, interval, symbol, start_time, end_time)
+        
+        result = []
+        cumulative_delta = 0
+        for row in rows:
+            bid_vol = row['bid_volume'] or 0
+            ask_vol = row['ask_volume'] or 0
+            delta = ask_vol - bid_vol # Buyers - Sellers
+            cumulative_delta += delta
+            
+            result.append({
+                'time': row['bucket'],
+                'delta': delta,
+                'cumulative_delta': cumulative_delta
+            })
+            
+        return result
+
     async def broadcast_tick(self, symbol: str, data: dict):
         """Broadcast tick to WebSocket clients"""
         from app.services.websocket_service import ws_manager

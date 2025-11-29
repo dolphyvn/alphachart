@@ -184,3 +184,22 @@ async def get_footprint(
         
     footprint = await service.get_footprint_data(symbol, timeframe, start_time, end_time)
     return footprint
+
+@router.get("/cvd")
+async def get_cvd(
+    symbol: str,
+    timeframe: str = "1m",
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    service: MarketDataService = Depends()
+):
+    """
+    Get Cumulative Volume Delta (CVD) data.
+    """
+    if not end_time:
+        end_time = datetime.utcnow()
+    if not start_time:
+        start_time = end_time - timedelta(hours=1)
+        
+    cvd = await service.get_cvd_data(symbol, timeframe, start_time, end_time)
+    return cvd
