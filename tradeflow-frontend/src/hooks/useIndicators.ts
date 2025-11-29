@@ -9,7 +9,7 @@ export function useIndicators(symbol: string, timeframe: string) {
         try {
             let data: any[] = [];
             let color = '#2962FF'; // Default blue
-            let name = type;
+            let name: string = type;
 
             switch (type) {
                 case 'SMA':
