@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from app.db.timescale import timescale_manager
@@ -90,17 +90,17 @@ class MarketDataService:
             
         return len(data_tuples)
 
-    def _parse_timeframe(self, timeframe: str) -> str:
+    def _parse_timeframe(self, timeframe: str) -> timedelta:
         mapping = {
-            '1s': '1 second',
-            '1m': '1 minute',
-            '5m': '5 minutes',
-            '15m': '15 minutes',
-            '1h': '1 hour',
-            '4h': '4 hours',
-            '1d': '1 day'
+            '1s': timedelta(seconds=1),
+            '1m': timedelta(minutes=1),
+            '5m': timedelta(minutes=5),
+            '15m': timedelta(minutes=15),
+            '1h': timedelta(hours=1),
+            '4h': timedelta(hours=4),
+            '1d': timedelta(days=1)
         }
-        return mapping.get(timeframe, '1 minute')
+        return mapping.get(timeframe, timedelta(minutes=1))
 
     async def get_bars(self, symbol: str, timeframe: str, limit: int = 500) -> List[Dict[str, Any]]:
         logger.info(f"Fetching bars for {symbol} {timeframe} limit={limit}")
@@ -121,7 +121,7 @@ class MarketDataService:
             
             query = """
                 SELECT 
-                    time_bucket($1::text::interval, time) AS bucket,
+                    time_bucket($1, time) AS bucket,
                     $2 AS symbol,
                     $3 AS timeframe,
                     first(open, time) AS open,
