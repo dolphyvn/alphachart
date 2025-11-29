@@ -183,6 +183,11 @@ export const TVChart: React.FC<TVChartProps> = ({
             }
         }
 
+        // Force fit content
+        if (uniqueCandleData.length > 0) {
+            chartRef.current.timeScale().fitContent();
+        }
+
     }, [bars, cvd, theme, colors]);
 
     return (
