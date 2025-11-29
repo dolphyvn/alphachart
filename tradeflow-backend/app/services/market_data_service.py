@@ -120,7 +120,7 @@ class MarketDataService:
             interval = self._parse_timeframe(timeframe)
             query = """
                 SELECT 
-                    time_bucket($1::interval, time) AS bucket,
+                    time_bucket('1 minute', time) AS bucket,
                     $2 AS symbol,
                     $3 AS timeframe,
                     first(open, time) AS open,
@@ -133,7 +133,7 @@ class MarketDataService:
                     sum(number_of_trades) AS number_of_trades,
                     last(open_interest, time) AS open_interest
                 FROM market_data
-                WHERE symbol = $2 AND timeframe = '1s'
+                WHERE symbol = $2
                 GROUP BY bucket
                 ORDER BY bucket DESC
                 LIMIT $4
