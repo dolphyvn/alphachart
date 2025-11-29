@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Header, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from app.core.security import verify_api_key
@@ -146,3 +146,22 @@ async def get_market_data(
     """
     bars = await service.get_bars(symbol, timeframe, limit)
     return bars
+
+@router.get("/volume-profile")
+async def get_volume_profile(
+    symbol: str,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    service: MarketDataService = Depends()
+):
+    """
+    Get volume profile for a specific range.
+    If no time range provided, defaults to last 24 hours.
+    """
+    if not end_time:
+        end_time = datetime.utcnow()
+    if not start_time:
+        start_time = end_time - timedelta(days=1)
+        
+    profile = await service.get_volume_profile(symbol, start_time, end_time)
+    return profile

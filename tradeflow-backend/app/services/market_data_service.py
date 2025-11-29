@@ -196,6 +196,26 @@ class MarketDataService:
             volume, bid_volume or 0, ask_volume or 0
         )
 
+    async def get_volume_profile(self, symbol: str, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
+        """
+        Get volume profile aggregated from 1s bars.
+        Approximation: Uses 'close' price of 1s bar as the price level.
+        """
+        query = """
+            SELECT 
+                round(close::numeric, 2) as price, 
+                sum(volume) as volume,
+                sum(bid_volume) as bid_volume,
+                sum(ask_volume) as ask_volume
+            FROM market_data
+            WHERE symbol = $1 AND timeframe = '1s' AND time >= $2 AND time <= $3
+            GROUP BY price
+            ORDER BY price DESC
+        """
+        
+        rows = await timescale_manager.fetch(query, symbol, start_time, end_time)
+        return [dict(row) for row in rows]
+
     async def broadcast_tick(self, symbol: str, data: dict):
         """Broadcast tick to WebSocket clients"""
         from app.services.websocket_service import ws_manager
