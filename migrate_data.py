@@ -70,6 +70,40 @@ async def insert_data_batch(conn, batch: List[Tuple]):
     
     await conn.executemany(query, transformed_data)
 
+async def init_db(conn):
+    logger.info("Initializing Target Database Schema...")
+    # Create table
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS market_data (
+            time TIMESTAMPTZ NOT NULL,
+            symbol VARCHAR(50) NOT NULL,
+            timeframe VARCHAR(10) NOT NULL,
+            open DOUBLE PRECISION NOT NULL,
+            high DOUBLE PRECISION NOT NULL,
+            low DOUBLE PRECISION NOT NULL,
+            close DOUBLE PRECISION NOT NULL,
+            volume DOUBLE PRECISION NOT NULL,
+            bid_volume DOUBLE PRECISION,
+            ask_volume DOUBLE PRECISION,
+            number_of_trades INTEGER,
+            open_interest DOUBLE PRECISION,
+            source VARCHAR(100) DEFAULT 'sierra_chart',
+            collected_at TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (time, symbol, timeframe)
+        );
+    """)
+    
+    # Convert to hypertable (ignore error if already exists)
+    try:
+        await conn.execute("""
+            SELECT create_hypertable('market_data', 'time', 
+                chunk_time_interval => INTERVAL '1 day',
+                if_not_exists => TRUE
+            );
+        """)
+    except Exception as e:
+        logger.warning(f"Hypertable creation warning (might already exist): {e}")
+
 async def migrate():
     logger.info("Starting migration...")
     
@@ -85,6 +119,10 @@ async def migrate():
     try:
         target_conn = await asyncpg.connect(TARGET_DB_DSN)
         logger.info("Connected to Target Database (TimescaleDB)")
+        
+        # Initialize Schema
+        await init_db(target_conn)
+        
     except Exception as e:
         logger.error(f"Failed to connect to Target Database: {e}")
         source_pool.close()
