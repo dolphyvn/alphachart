@@ -91,6 +91,7 @@ class MarketDataService:
         return len(data_tuples)
 
     async def get_bars(self, symbol: str, timeframe: str, limit: int = 500) -> List[Dict[str, Any]]:
+        logger.info(f"Fetching bars for {symbol} {timeframe} limit={limit}")
         query = """
             SELECT * FROM market_data 
             WHERE symbol = $1 AND timeframe = $2
@@ -98,6 +99,7 @@ class MarketDataService:
             LIMIT $3
         """
         rows = await timescale_manager.fetch(query, symbol, timeframe, limit)
+        logger.info(f"Found {len(rows)} rows")
         return [dict(row) for row in rows]
 
     async def aggregate_to_higher_timeframes(self, symbol: str, timeframe: str, timestamp: datetime):
