@@ -2,14 +2,26 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { ChartCanvas } from './ChartCanvas';
-import { Bar, Indicator } from '@/types/chart';
+import { Bar, Indicator, Drawing } from '@/types/chart';
+import { DrawingTool } from '@/hooks/useDrawings';
 
 interface ChartContainerProps {
     bars: Bar[];
     indicators?: Indicator[];
+    drawings?: Drawing[];
+    activeTool?: DrawingTool;
+    onAddDrawing?: (drawing: Drawing) => void;
+    onUpdateDrawing?: (id: string, updates: Partial<Drawing>) => void;
 }
 
-export const ChartContainer: React.FC<ChartContainerProps> = ({ bars, indicators = [] }) => {
+export const ChartContainer: React.FC<ChartContainerProps> = ({
+    bars,
+    indicators = [],
+    drawings = [],
+    activeTool = 'cursor',
+    onAddDrawing,
+    onUpdateDrawing
+}) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
@@ -34,7 +46,16 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({ bars, indicators
             <div className="absolute top-4 left-4 z-10 text-sm font-medium text-muted-foreground">
                 TradeFlow Pro Chart
             </div>
-            <ChartCanvas bars={bars} indicators={indicators} width={dimensions.width} height={dimensions.height} />
+            <ChartCanvas
+                bars={bars}
+                indicators={indicators}
+                drawings={drawings}
+                activeTool={activeTool}
+                onAddDrawing={onAddDrawing}
+                onUpdateDrawing={onUpdateDrawing}
+                width={dimensions.width}
+                height={dimensions.height}
+            />
         </div>
     );
 };

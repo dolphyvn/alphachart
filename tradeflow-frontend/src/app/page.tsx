@@ -3,6 +3,7 @@
 import { ChartContainer } from '@/components/chart/ChartContainer';
 import { useMarketData } from '@/hooks/useMarketData';
 import { useIndicators } from '@/hooks/useIndicators';
+import { useDrawings } from '@/hooks/useDrawings';
 import { Header } from '@/components/layout/Header';
 import { useState } from 'react';
 
@@ -12,6 +13,7 @@ export default function Home() {
 
   const { bars, isLoading, error } = useMarketData(symbol, timeframe);
   const { indicators, addIndicator, removeIndicator } = useIndicators(symbol, timeframe);
+  const { drawings, activeTool, setActiveTool, addDrawing, updateDrawing } = useDrawings();
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
@@ -21,6 +23,8 @@ export default function Home() {
         timeframe={timeframe}
         onTimeframeChange={setTimeframe}
         onAddIndicator={addIndicator}
+        activeTool={activeTool}
+        onToolChange={setActiveTool}
       />
 
       <div className="flex-1 w-full relative min-h-[600px]">
@@ -34,7 +38,14 @@ export default function Home() {
             {error}
           </div>
         )}
-        <ChartContainer bars={bars} indicators={indicators} />
+        <ChartContainer
+          bars={bars}
+          indicators={indicators}
+          drawings={drawings}
+          activeTool={activeTool}
+          onAddDrawing={addDrawing}
+          onUpdateDrawing={updateDrawing}
+        />
 
         {/* Active Indicators List */}
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">

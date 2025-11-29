@@ -31,6 +31,24 @@ export class ChartRenderer {
         return this.timeScale;
     }
 
+    getLogicalCoordinates(x: number, y: number, bars: Bar[]) {
+        const index = Math.round(this.timeScale.xToIndex(x));
+        const price = this.priceScale.yToPrice(y);
+
+        let timestamp = 0;
+        if (index >= 0 && index < bars.length) {
+            timestamp = bars[index].timestamp;
+        } else if (bars.length > 0) {
+            // Extrapolate
+            const lastBar = bars[bars.length - 1];
+            const diff = index - (bars.length - 1);
+            // Assuming 1s bars for now, ideally use timeframe
+            timestamp = lastBar.timestamp + diff;
+        }
+
+        return { timestamp, price };
+    }
+
     resize(width: number, height: number) {
         this.width = width;
         this.height = height;
@@ -64,6 +82,64 @@ export class ChartRenderer {
 
         // Draw indicators
         this.drawIndicators(bars, indicators);
+
+        // Draw drawings
+        this.drawDrawings(bars, drawings);
+    }
+
+    private drawDrawings(bars: Bar[], drawings: Drawing[]) {
+        drawings.forEach(drawing => {
+            if (drawing.points.length === 0) return;
+
+            this.ctx.strokeStyle = drawing.color;
+            this.ctx.lineWidth = drawing.lineWidth;
+            this.ctx.fillStyle = drawing.color; // For handles
+
+            const screenPoints = drawing.points.map(p => {
+                // Find closest bar index for timestamp
+                // Optimization: Binary search would be better for large datasets
+                const index = bars.findIndex(b => Math.abs(b.timestamp - p.timestamp) < 1); // Exact match or close enough
+                // If not found (e.g. future timestamp), we might need to extrapolate index
+                // For now, let's assume it exists or use linear interpolation if we had a proper time axis
+
+                // Fallback: estimate index based on time difference from last bar if not found
+                let estimatedIndex = index;
+                if (index === -1 && bars.length > 0) {
+                    const lastBar = bars[bars.length - 1];
+                    const timeDiff = p.timestamp - lastBar.timestamp;
+                    // Assuming 1s bars for now, but should use chart timeframe
+                    estimatedIndex = bars.length - 1 + Math.round(timeDiff);
+                }
+
+                return {
+                    x: this.timeScale.indexToX(estimatedIndex),
+                    y: this.priceScale.priceToY(p.price)
+                };
+            });
+
+            this.ctx.beginPath();
+            if (drawing.type === 'line' && screenPoints.length >= 2) {
+                this.ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+                this.ctx.lineTo(screenPoints[1].x, screenPoints[1].y);
+            } else if (drawing.type === 'rect' && screenPoints.length >= 2) {
+                const x = screenPoints[0].x;
+                const y = screenPoints[0].y;
+                const w = screenPoints[1].x - x;
+                const h = screenPoints[1].y - y;
+                this.ctx.strokeRect(x, y, w, h);
+            }
+
+            this.ctx.stroke();
+
+            // Draw handles if selected
+            if (drawing.selected) {
+                screenPoints.forEach(p => {
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+            }
+        });
     }
 
     private drawIndicators(bars: Bar[], indicators: Indicator[]) {

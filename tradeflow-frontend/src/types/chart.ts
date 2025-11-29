@@ -26,4 +26,7 @@ export interface Drawing {
   id: string;
   type: 'line' | 'rect' | 'circle';
   points: { timestamp: number; price: number }[]; // Logical coordinates
+  color: string;
+  lineWidth: number;
+  selected?: boolean;
 }
