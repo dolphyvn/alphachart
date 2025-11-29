@@ -13,21 +13,21 @@ class Settings(BaseSettings):
     
     # MariaDB
     MARIADB_HOST: str = "localhost"
-    MARIADB_PORT: int = 3306
+    MARIADB_PORT: int = 3307
     MARIADB_USER: str = "tradeflow"
     MARIADB_PASSWORD: str = "tradeflow"
     MARIADB_DATABASE: str = "tradeflow_db"
     
     # TimescaleDB
     TIMESCALE_HOST: str = "localhost"
-    TIMESCALE_PORT: int = 5432
+    TIMESCALE_PORT: int = 5433
     TIMESCALE_USER: str = "tradeflow"
     TIMESCALE_PASSWORD: str = "tradeflow"
     TIMESCALE_DATABASE: str = "market_data_db"
     
     # Redis
     REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
+    REDIS_PORT: int = 6380
     REDIS_PASSWORD: str = ""
     
     # JWT
