@@ -6,7 +6,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - MARIADB_HOST=mariadb
       - TIMESCALE_HOST=timescaledb
