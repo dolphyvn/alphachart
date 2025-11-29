@@ -42,14 +42,6 @@ export const TVChart: React.FC<TVChartProps> = ({
     useEffect(() => {
         if (!chartContainerRef.current) return;
 
-        const handleResize = () => {
-            if (chartContainerRef.current && chartRef.current) {
-                chartRef.current.applyOptions({
-                    width: chartContainerRef.current.clientWidth,
-                    height: chartContainerRef.current.clientHeight
-                });
-            }
-        };
 
         // Initialize Chart
         const chart = createChart(chartContainerRef.current, {
@@ -107,10 +99,18 @@ export const TVChart: React.FC<TVChartProps> = ({
             },
         });
 
-        window.addEventListener('resize', handleResize);
+        // Resize Observer
+        const resizeObserver = new ResizeObserver(entries => {
+            if (entries.length === 0 || entries[0].target !== chartContainerRef.current) { return; }
+            const newRect = entries[0].contentRect;
+            console.log('TVChart: Resize', newRect.width, newRect.height);
+            chart.applyOptions({ width: newRect.width, height: newRect.height });
+        });
+
+        resizeObserver.observe(chartContainerRef.current);
 
         return () => {
-            window.removeEventListener('resize', handleResize);
+            resizeObserver.disconnect();
             chart.remove();
         };
     }, []); // Run once on mount
