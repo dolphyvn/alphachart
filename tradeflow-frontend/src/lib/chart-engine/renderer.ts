@@ -193,36 +193,33 @@ export class ChartRenderer {
         this.ctx.restore();
 
         // --- CVD Area ---
+        // Always draw CVD area background and separator to show layout
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(this.cvdArea.x, this.cvdArea.y, this.cvdArea.w, this.cvdArea.h);
+        this.ctx.clip();
+
+        // Draw separator
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = this.theme.grid;
+        this.ctx.moveTo(this.cvdArea.x, this.cvdArea.y);
+        this.ctx.lineTo(this.cvdArea.x + this.cvdArea.w, this.cvdArea.y);
+        this.ctx.stroke();
+
         if (cvd && cvd.length > 0) {
-            this.ctx.save();
-            this.ctx.beginPath();
-            this.ctx.rect(this.cvdArea.x, this.cvdArea.y, this.cvdArea.w, this.cvdArea.h);
-            this.ctx.clip();
-
-            // Draw separator
-            this.ctx.beginPath();
-            this.ctx.strokeStyle = this.theme.grid;
-            this.ctx.moveTo(this.cvdArea.x, this.cvdArea.y);
-            this.ctx.lineTo(this.cvdArea.x + this.cvdArea.w, this.cvdArea.y);
-            this.ctx.stroke();
-
             this.drawCVD(bars, cvd);
-            this.ctx.restore();
         }
+        this.ctx.restore();
 
         // --- Axes ---
         this.drawTimeAxis(bars);
         this.drawPriceAxis(this.priceAxisMainArea, this.priceScale);
 
-        // Draw CVD Price Axis if needed
-        if (cvd && cvd.length > 0) {
-            // We need a scale for CVD to draw axis
-            // For now, just draw the box
-            this.ctx.fillStyle = this.theme.background;
-            this.ctx.fillRect(this.priceAxisCVDArea.x, this.priceAxisCVDArea.y, this.priceAxisCVDArea.w, this.priceAxisCVDArea.h);
-            this.ctx.strokeStyle = this.theme.grid;
-            this.ctx.strokeRect(this.priceAxisCVDArea.x, this.priceAxisCVDArea.y, this.priceAxisCVDArea.w, this.priceAxisCVDArea.h);
-        }
+        // Draw CVD Price Axis
+        this.ctx.fillStyle = this.theme.background;
+        this.ctx.fillRect(this.priceAxisCVDArea.x, this.priceAxisCVDArea.y, this.priceAxisCVDArea.w, this.priceAxisCVDArea.h);
+        this.ctx.strokeStyle = this.theme.grid;
+        this.ctx.strokeRect(this.priceAxisCVDArea.x, this.priceAxisCVDArea.y, this.priceAxisCVDArea.w, this.priceAxisCVDArea.h);
     }
 
     private drawTimeAxis(bars: Bar[]) {
