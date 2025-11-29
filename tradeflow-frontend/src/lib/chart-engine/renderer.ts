@@ -96,6 +96,10 @@ export class ChartRenderer {
         return this.timeScale;
     }
 
+    getPriceScale() {
+        return this.priceScale;
+    }
+
     getLayout() {
         return {
             mainArea: this.mainArea,

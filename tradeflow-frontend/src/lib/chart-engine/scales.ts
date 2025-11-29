@@ -3,6 +3,7 @@ export class PriceScale {
     private minPrice: number = 0;
     private maxPrice: number = 100;
     private padding: number = 0.1; // 10% padding
+    private scale: number = 1; // Zoom level
 
     constructor(height: number) {
         this.height = height;
@@ -10,8 +11,20 @@ export class PriceScale {
 
     setRange(min: number, max: number) {
         const range = max - min;
-        this.minPrice = min - range * this.padding;
-        this.maxPrice = max + range * this.padding;
+        // Apply scale to range
+        const center = (max + min) / 2;
+        const scaledRange = range / this.scale;
+
+        this.minPrice = center - scaledRange / 2 - scaledRange * this.padding;
+        this.maxPrice = center + scaledRange / 2 + scaledRange * this.padding;
+    }
+
+    setScale(scale: number) {
+        this.scale = Math.max(0.1, Math.min(10, scale));
+    }
+
+    getScale() {
+        return this.scale;
     }
 
     priceToY(price: number): number {

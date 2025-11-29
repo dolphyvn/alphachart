@@ -119,8 +119,13 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
                     const newSpacing = Math.max(1, Math.min(100, timeScale.getBarSpacing() * (Math.abs(dx) > 0 ? (dx > 0 ? 1.05 : 0.95) : 1)));
                     timeScale.setBarSpacing(newSpacing);
                 } else if (dragTarget.current === 'priceAxis') {
-                    // Zoom price scale (not implemented in PriceScale yet, but we can simulate or just ignore for now)
-                    // Ideally PriceScale needs setRange or setZoom
+                    const priceScale = rendererRef.current.getPriceScale();
+                    const currentScale = priceScale.getScale();
+                    // Zoom price scale based on dy
+                    // Dragging down (dy > 0) zooms out (decreases scale)
+                    // Dragging up (dy < 0) zooms in (increases scale)
+                    const zoomFactor = dy > 0 ? 0.95 : 1.05;
+                    priceScale.setScale(currentScale * zoomFactor);
                 }
 
                 lastX.current = e.clientX;
