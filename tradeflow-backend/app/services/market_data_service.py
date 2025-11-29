@@ -90,17 +90,64 @@ class MarketDataService:
             
         return len(data_tuples)
 
+    def _parse_timeframe(self, timeframe: str) -> str:
+        mapping = {
+            '1s': '1 second',
+            '1m': '1 minute',
+            '5m': '5 minutes',
+            '15m': '15 minutes',
+            '1h': '1 hour',
+            '4h': '4 hours',
+            '1d': '1 day'
+        }
+        return mapping.get(timeframe, '1 minute')
+
     async def get_bars(self, symbol: str, timeframe: str, limit: int = 500) -> List[Dict[str, Any]]:
         logger.info(f"Fetching bars for {symbol} {timeframe} limit={limit}")
-        query = """
-            SELECT * FROM market_data 
-            WHERE symbol = $1 AND timeframe = $2
-            ORDER BY time DESC
-            LIMIT $3
-        """
-        rows = await timescale_manager.fetch(query, symbol, timeframe, limit)
-        logger.info(f"Found {len(rows)} rows")
-        return [dict(row) for row in rows]
+        
+        if timeframe == '1s':
+            query = """
+                SELECT * FROM market_data 
+                WHERE symbol = $1 AND timeframe = $2
+                ORDER BY time DESC
+                LIMIT $3
+            """
+            rows = await timescale_manager.fetch(query, symbol, timeframe, limit)
+            logger.info(f"Found {len(rows)} rows (raw)")
+            return [dict(row) for row in rows]
+        else:
+            # On-the-fly aggregation from 1s data
+            interval = self._parse_timeframe(timeframe)
+            query = """
+                SELECT 
+                    time_bucket($1, time) AS bucket,
+                    $2 AS symbol,
+                    $3 AS timeframe,
+                    first(open, time) AS open,
+                    max(high) AS high,
+                    min(low) AS low,
+                    last(close, time) AS close,
+                    sum(volume) AS volume,
+                    sum(bid_volume) AS bid_volume,
+                    sum(ask_volume) AS ask_volume,
+                    sum(number_of_trades) AS number_of_trades,
+                    last(open_interest, time) AS open_interest
+                FROM market_data
+                WHERE symbol = $2 AND timeframe = '1s'
+                GROUP BY bucket
+                ORDER BY bucket DESC
+                LIMIT $4
+            """
+            rows = await timescale_manager.fetch(query, interval, symbol, timeframe, limit)
+            logger.info(f"Found {len(rows)} rows (aggregated)")
+            
+            # Map bucket to time
+            result = []
+            for row in rows:
+                d = dict(row)
+                d['time'] = d.pop('bucket')
+                result.append(d)
+            return result
 
     async def aggregate_to_higher_timeframes(self, symbol: str, timeframe: str, timestamp: datetime):
         """
