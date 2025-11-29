@@ -132,7 +132,7 @@ async def receive_batch(
         "symbol": symbol
     }
 
-@router.get("/{symbol}")
+@router.get("/bars")
 async def get_market_data(
     symbol: str,
     timeframe: str = "1m",
