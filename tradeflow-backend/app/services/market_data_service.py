@@ -118,21 +118,10 @@ class MarketDataService:
         else:
             # On-the-fly aggregation from 1s data
             interval = self._parse_timeframe(timeframe)
-            logger.info(f"Aggregation params: interval={interval}, symbol={symbol}, timeframe={timeframe}, limit={limit}")
             
-            # DEBUG: Test simple group by
-            try:
-                test_query = "SELECT symbol, count(*) as cnt FROM market_data WHERE symbol = $1 GROUP BY symbol"
-                test_rows = await timescale_manager.fetch(test_query, symbol)
-                logger.info(f"Test query rows: {len(test_rows)}")
-                if test_rows:
-                    logger.info(f"Test row: {dict(test_rows[0])}")
-            except Exception as e:
-                logger.error(f"Test query failed: {e}")
-
             query = """
                 SELECT 
-                    time_bucket($1::interval, time)::text AS bucket,
+                    time_bucket($1::text::interval, time) AS bucket,
                     $2 AS symbol,
                     $3 AS timeframe,
                     first(open, time) AS open,
@@ -145,7 +134,7 @@ class MarketDataService:
                     sum(number_of_trades) AS number_of_trades,
                     last(open_interest, time) AS open_interest
                 FROM market_data
-                WHERE symbol = $2
+                WHERE symbol = $2 AND timeframe = '1s'
                 GROUP BY bucket
                 ORDER BY bucket DESC
                 LIMIT $4
