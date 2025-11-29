@@ -41,6 +41,11 @@ export class PriceScale {
         return this.height - ((price - this.minPrice) / range) * this.height;
     }
 
+    shift(delta: number) {
+        this.minPrice += delta;
+        this.maxPrice += delta;
+    }
+
     yToPrice(y: number): number {
         const range = this.maxPrice - this.minPrice;
         return this.maxPrice - (y / this.height) * range;

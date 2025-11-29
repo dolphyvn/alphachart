@@ -173,10 +173,7 @@ export class ChartRenderer {
         this.autoScale = false;
         const range = this.priceScale.getMaxPrice() - this.priceScale.getMinPrice();
         const priceDelta = (dy / this.mainArea.h) * range;
-        this.priceScale.setRange(
-            this.priceScale.getMinPrice() + priceDelta,
-            this.priceScale.getMaxPrice() + priceDelta
-        );
+        this.priceScale.shift(priceDelta);
     }
 
     render(bars: Bar[], indicators: Indicator[], drawings: Drawing[], volumeProfile?: any[], footprint?: any[], cvd?: any[]) {
