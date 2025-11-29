@@ -6,7 +6,7 @@ import { useState } from 'react';
 
 export default function Home() {
   const [symbol, setSymbol] = useState('XAUUSD'); // Default symbol
-  const [timeframe, setTimeframe] = useState('1m');
+  const [timeframe, setTimeframe] = useState('60s');
 
   const { bars, isLoading, error } = useMarketData(symbol, timeframe);
 
