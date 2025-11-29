@@ -2,15 +2,16 @@
 
 import React, { useRef, useEffect } from 'react';
 import { ChartRenderer } from '@/lib/chart-engine/renderer';
-import { Bar } from '@/types/chart';
+import { Bar, Indicator } from '@/types/chart';
 
 interface ChartCanvasProps {
     bars: Bar[];
+    indicators?: Indicator[];
     width: number;
     height: number;
 }
 
-export const ChartCanvas: React.FC<ChartCanvasProps> = ({ bars, width, height }) => {
+export const ChartCanvas: React.FC<ChartCanvasProps> = ({ bars, indicators = [], width, height }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<ChartRenderer | null>(null);
 
@@ -23,9 +24,9 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({ bars, width, height })
             rendererRef.current.resize(width, height);
         }
 
-        rendererRef.current.render(bars, [], []);
+        rendererRef.current.render(bars, indicators, []);
 
-    }, [bars, width, height]);
+    }, [bars, indicators, width, height]);
 
     return (
         <canvas

@@ -7,12 +7,19 @@ export interface Bar {
   volume: number;
 }
 
+export interface IndicatorData {
+  timestamp: number;
+  value: number | { [key: string]: number }; // Single value or object (e.g. {upper, middle, lower})
+}
+
 export interface Indicator {
   id: string;
-  type: 'SMA' | 'EMA' | 'RSI' | 'MACD';
+  type: 'SMA' | 'EMA' | 'RSI' | 'MACD' | 'BOLLINGER';
+  name: string;
   color: string;
-  period?: number;
-  data?: number[];
+  params: { [key: string]: any }; // e.g. { period: 14, std_dev: 2 }
+  data: IndicatorData[];
+  overlay: boolean; // True if drawn on price chart, false if separate pane
 }
 
 export interface Drawing {

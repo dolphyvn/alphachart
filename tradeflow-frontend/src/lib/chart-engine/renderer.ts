@@ -57,6 +57,80 @@ export class ChartRenderer {
 
         // Draw candlesticks
         this.drawCandlesticks(bars);
+
+        // Draw indicators
+        this.drawIndicators(bars, indicators);
+    }
+
+    private drawIndicators(bars: Bar[], indicators: Indicator[]) {
+        indicators.forEach(indicator => {
+            if (!indicator.overlay) return; // Skip non-overlay indicators for now
+
+            this.ctx.strokeStyle = indicator.color;
+            this.ctx.lineWidth = 1.5;
+
+            if (indicator.type === 'BOLLINGER') {
+                this.drawBollingerBands(bars, indicator);
+            } else {
+                this.drawLineIndicator(bars, indicator);
+            }
+        });
+    }
+
+    private drawLineIndicator(bars: Bar[], indicator: Indicator) {
+        this.ctx.beginPath();
+        let started = false;
+
+        bars.forEach((bar, index) => {
+            // Find matching indicator data
+            // Assuming both are sorted, but for safety we find by timestamp
+            // Optimization: could use a map or index tracking if performance is an issue
+            const point = indicator.data.find(d => Math.abs(d.timestamp - bar.timestamp) < 1); // 1s tolerance
+
+            if (point && typeof point.value === 'number') {
+                const x = this.timeScale.indexToX(index);
+                const y = this.priceScale.priceToY(point.value);
+
+                if (!started) {
+                    this.ctx.moveTo(x, y);
+                    started = true;
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+        });
+
+        this.ctx.stroke();
+    }
+
+    private drawBollingerBands(bars: Bar[], indicator: Indicator) {
+        // Draw Upper, Middle, Lower
+        const lines = ['upper', 'middle', 'lower'];
+
+        lines.forEach(line => {
+            this.ctx.beginPath();
+            let started = false;
+            // Make middle line solid, others slightly thinner or dashed?
+            this.ctx.setLineDash(line === 'middle' ? [] : [2, 2]);
+
+            bars.forEach((bar, index) => {
+                const point = indicator.data.find(d => Math.abs(d.timestamp - bar.timestamp) < 1);
+
+                if (point && typeof point.value === 'object' && point.value[line] !== undefined) {
+                    const x = this.timeScale.indexToX(index);
+                    const y = this.priceScale.priceToY(point.value[line]);
+
+                    if (!started) {
+                        this.ctx.moveTo(x, y);
+                        started = true;
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+            });
+            this.ctx.stroke();
+        });
+        this.ctx.setLineDash([]); // Reset
     }
 
     private drawGrid() {

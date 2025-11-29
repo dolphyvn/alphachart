@@ -2,13 +2,14 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { ChartCanvas } from './ChartCanvas';
-import { Bar } from '@/types/chart';
+import { Bar, Indicator } from '@/types/chart';
 
 interface ChartContainerProps {
     bars: Bar[];
+    indicators?: Indicator[];
 }
 
-export const ChartContainer: React.FC<ChartContainerProps> = ({ bars }) => {
+export const ChartContainer: React.FC<ChartContainerProps> = ({ bars, indicators = [] }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
@@ -33,7 +34,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({ bars }) => {
             <div className="absolute top-4 left-4 z-10 text-sm font-medium text-muted-foreground">
                 TradeFlow Pro Chart
             </div>
-            <ChartCanvas bars={bars} width={dimensions.width} height={dimensions.height} />
+            <ChartCanvas bars={bars} indicators={indicators} width={dimensions.width} height={dimensions.height} />
         </div>
     );
 };
