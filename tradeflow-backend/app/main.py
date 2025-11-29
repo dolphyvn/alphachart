@@ -10,7 +10,8 @@ from app.api.v1 import (
     auth, market_data, indicators,
     # charts,
     orderflow, volume_profile, alerts,
-    # workspaces, social, websocket
+    # workspaces, social, 
+    websocket
 )
 from app.config import settings
 # from app.core.monitoring import setup_monitoring
@@ -77,7 +78,7 @@ app.include_router(volume_profile.router, prefix="/api/v1/volume-profile", tags=
 app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
 # app.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["Workspaces"])
 # app.include_router(social.router, prefix="/api/v1/social", tags=["Social"])
-# app.include_router(websocket.router, prefix="/api/v1/ws", tags=["WebSocket"])
+app.include_router(websocket.router, prefix="/api/v1/ws", tags=["WebSocket"])
 
 if __name__ == "__main__":
     import uvicorn
