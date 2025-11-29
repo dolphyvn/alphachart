@@ -13,6 +13,7 @@ import { useState } from 'react';
 export default function Home() {
   const [symbol, setSymbol] = useState('XAUUSD'); // Default symbol
   const [timeframe, setTimeframe] = useState('1s');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   const { bars, isLoading, error } = useMarketData(symbol, timeframe);
   const { indicators, addIndicator, removeIndicator } = useIndicators(symbol, timeframe);
@@ -22,7 +23,7 @@ export default function Home() {
   const { cvdData } = useCVD(symbol, timeframe, bars);
 
   return (
-    <main className="flex min-h-screen flex-col bg-background text-foreground">
+    <main className={`flex min-h-screen flex-col ${theme === 'dark' ? 'dark' : ''} bg-background text-foreground`}>
       <Header
         symbol={symbol}
         onSymbolChange={setSymbol}
@@ -32,6 +33,16 @@ export default function Home() {
         activeTool={activeTool}
         onToolChange={setActiveTool}
       />
+
+      {/* Theme Toggle (Temporary UI) */}
+      <div className="absolute top-4 right-4 z-50">
+        <button
+          onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+          className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm"
+        >
+          {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+        </button>
+      </div>
 
       <div className="flex-1 w-full relative min-h-[600px]">
         {isLoading && (
@@ -54,10 +65,11 @@ export default function Home() {
           volumeProfile={volumeProfile}
           footprint={footprintData}
           cvd={cvdData}
+          theme={theme}
         />
 
         {/* Active Indicators List */}
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+        <div className="absolute top-16 left-4 z-10 flex flex-col gap-2">
           {indicators.map(ind => (
             <div key={ind.id} className="flex items-center gap-2 bg-background/80 backdrop-blur px-3 py-1 rounded border shadow-sm text-xs">
               <span className="w-3 h-3 rounded-full" style={{ backgroundColor: ind.color }}></span>

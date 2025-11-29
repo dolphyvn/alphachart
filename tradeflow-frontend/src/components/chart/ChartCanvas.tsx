@@ -17,6 +17,7 @@ interface ChartCanvasProps {
     cvd?: any[];
     width: number;
     height: number;
+    theme?: 'light' | 'dark';
 }
 
 export const ChartCanvas: React.FC<ChartCanvasProps> = ({
@@ -30,27 +31,31 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
     footprint = [],
     cvd = [],
     width,
-    height
+    height,
+    theme = 'light'
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<ChartRenderer | null>(null);
 
     const isDragging = useRef(false);
+    const dragTarget = useRef<'chart' | 'timeAxis' | 'priceAxis'>('chart');
     const lastX = useRef(0);
+    const lastY = useRef(0);
     const currentDrawingId = useRef<string | null>(null);
 
     useEffect(() => {
         if (!canvasRef.current) return;
 
         if (!rendererRef.current) {
-            rendererRef.current = new ChartRenderer(canvasRef.current, width, height);
+            rendererRef.current = new ChartRenderer(canvasRef.current, width, height, theme);
         } else {
             rendererRef.current.resize(width, height);
+            rendererRef.current.setTheme(theme);
         }
 
         rendererRef.current.render(bars, indicators, drawings, volumeProfile, footprint, cvd);
 
-    }, [bars, indicators, drawings, volumeProfile, footprint, cvd, width, height]);
+    }, [bars, indicators, drawings, volumeProfile, footprint, cvd, width, height, theme]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!rendererRef.current) return;
@@ -58,16 +63,28 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
+        const layout = rendererRef.current.getLayout();
+
         if (activeTool === 'cursor') {
             isDragging.current = true;
             lastX.current = e.clientX;
+            lastY.current = e.clientY;
+
+            // Hit test for axes
+            if (x >= layout.priceAxisMainArea.x && x <= layout.priceAxisMainArea.x + layout.priceAxisMainArea.w) {
+                dragTarget.current = 'priceAxis';
+            } else if (y >= layout.timeAxisArea.y && y <= layout.timeAxisArea.y + layout.timeAxisArea.h) {
+                dragTarget.current = 'timeAxis';
+            } else {
+                dragTarget.current = 'chart';
+            }
         } else {
             // Start Drawing
             const point = rendererRef.current.getLogicalCoordinates(x, y, bars);
             const id = Math.random().toString(36).substr(2, 9);
             const newDrawing: Drawing = {
                 id,
-                type: activeTool as Drawing['type'], // 'line' | 'rect' | 'circle'
+                type: activeTool as Drawing['type'],
                 points: [point],
                 color: '#2962FF',
                 lineWidth: 2,
@@ -90,25 +107,37 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
         if (activeTool === 'cursor') {
             if (isDragging.current) {
                 const dx = e.clientX - lastX.current;
-                const timeScale = rendererRef.current.getTimeScale();
-                timeScale.setOffset(timeScale.getOffset() - dx);
+                const dy = e.clientY - lastY.current;
+
+                if (dragTarget.current === 'chart') {
+                    const timeScale = rendererRef.current.getTimeScale();
+                    timeScale.setOffset(timeScale.getOffset() - dx);
+                } else if (dragTarget.current === 'timeAxis') {
+                    const timeScale = rendererRef.current.getTimeScale();
+                    // Zoom time scale
+                    const zoomFactor = dx > 0 ? 1.02 : 0.98;
+                    const newSpacing = Math.max(1, Math.min(100, timeScale.getBarSpacing() * (Math.abs(dx) > 0 ? (dx > 0 ? 1.05 : 0.95) : 1)));
+                    timeScale.setBarSpacing(newSpacing);
+                } else if (dragTarget.current === 'priceAxis') {
+                    // Zoom price scale (not implemented in PriceScale yet, but we can simulate or just ignore for now)
+                    // Ideally PriceScale needs setRange or setZoom
+                }
+
                 lastX.current = e.clientX;
+                lastY.current = e.clientY;
                 rendererRef.current.render(bars, indicators, drawings, volumeProfile, footprint, cvd);
+            } else {
+                // Hover effect for axes
+                const layout = rendererRef.current.getLayout();
+                if (x >= layout.priceAxisMainArea.x || y >= layout.timeAxisArea.y) {
+                    canvasRef.current!.style.cursor = x >= layout.priceAxisMainArea.x ? 'ns-resize' : 'ew-resize';
+                } else {
+                    canvasRef.current!.style.cursor = 'crosshair';
+                }
             }
         } else {
             if (currentDrawingId.current && onUpdateDrawing) {
                 const point = rendererRef.current.getLogicalCoordinates(x, y, bars);
-                // Update the drawing with the new point (end point)
-                // We need to know the current state of the drawing to append or update
-                // For simplicity, we assume we are dragging the second point
-
-                // We can't easily access the current drawing state here without passing it or finding it
-                // But we know we just added it.
-
-                // Actually, we need to update the points array.
-                // Since we don't have the previous points here easily without looking up in `drawings`,
-                // let's assume we are setting the 2nd point.
-
                 const drawing = drawings.find(d => d.id === currentDrawingId.current);
                 if (drawing) {
                     const newPoints = [drawing.points[0], point];
@@ -121,11 +150,13 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
     const handleMouseUp = () => {
         isDragging.current = false;
         currentDrawingId.current = null;
+        dragTarget.current = 'chart';
     };
 
     const handleMouseLeave = () => {
         isDragging.current = false;
         currentDrawingId.current = null;
+        dragTarget.current = 'chart';
     };
 
     const handleWheel = (e: React.WheelEvent) => {
@@ -140,7 +171,7 @@ export const ChartCanvas: React.FC<ChartCanvasProps> = ({
     return (
         <canvas
             ref={canvasRef}
-            className={`block w-full h-full ${activeTool === 'cursor' ? 'cursor-crosshair' : 'cursor-default'}`}
+            className={`block w-full h-full`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}

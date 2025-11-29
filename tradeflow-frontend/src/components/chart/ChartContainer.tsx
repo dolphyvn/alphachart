@@ -15,6 +15,7 @@ interface ChartContainerProps {
     volumeProfile?: any[];
     footprint?: any[];
     cvd?: any[];
+    theme?: 'light' | 'dark';
 }
 
 export const ChartContainer: React.FC<ChartContainerProps> = ({
@@ -26,7 +27,8 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     onUpdateDrawing,
     volumeProfile = [],
     footprint = [],
-    cvd = []
+    cvd = [],
+    theme = 'light'
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -64,6 +66,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
                 cvd={cvd}
                 width={dimensions.width}
                 height={dimensions.height}
+                theme={theme}
             />
         </div>
     );
