@@ -9,7 +9,8 @@ import time
 from app.api.v1 import (
     auth, market_data, indicators,
     # charts,
-    # orderflow, volume_profile, alerts,
+    orderflow, 
+    # volume_profile, alerts,
     # workspaces, social, websocket
 )
 from app.config import settings
@@ -72,7 +73,7 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(market_data.router, prefix="/api/v1/market-data", tags=["Market Data"])
 # app.include_router(charts.router, prefix="/api/v1/charts", tags=["Charts"])
 app.include_router(indicators.router, prefix="/api/v1/indicators", tags=["Indicators"])
-# app.include_router(orderflow.router, prefix="/api/v1/orderflow", tags=["Order Flow"])
+app.include_router(orderflow.router, prefix="/api/v1/orderflow", tags=["Order Flow"])
 # app.include_router(volume_profile.router, prefix="/api/v1/volume-profile", tags=["Volume Profile"])
 # app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
 # app.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["Workspaces"])
