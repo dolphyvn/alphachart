@@ -117,7 +117,14 @@ export const TVChart: React.FC<TVChartProps> = ({
 
     // Update Data and Theme
     useEffect(() => {
-        if (!chartRef.current || !candleSeriesRef.current || !cvdSeriesRef.current) return;
+        console.log('TVChart: Update Effect Triggered');
+        console.log('TVChart: Bars count:', bars.length);
+        console.log('TVChart: CVD count:', cvd.length);
+
+        if (!chartRef.current || !candleSeriesRef.current || !cvdSeriesRef.current) {
+            console.warn('TVChart: Refs not ready');
+            return;
+        }
 
         // Update Theme Options
         chartRef.current.applyOptions({
