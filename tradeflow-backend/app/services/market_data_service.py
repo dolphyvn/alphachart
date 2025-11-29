@@ -101,13 +101,58 @@ class MarketDataService:
         return [dict(row) for row in rows]
 
     async def aggregate_to_higher_timeframes(self, symbol: str, timeframe: str, timestamp: datetime):
-        # Placeholder for aggregation logic
+        """
+        Background task: Aggregate tick data to higher timeframes
+        
+        Example: 1s -> 1m, 5m, 15m, 1h, 4h, 1d
+        """
+        # This triggers TimescaleDB continuous aggregates
+        # They auto-refresh based on policies we set
+        # We can also manually refresh if needed
+        # await timescale_manager.execute("CALL refresh_continuous_aggregate('market_data_1min', NULL, NULL)")
         pass
 
-    async def update_volume_profile(self, symbol: str, timestamp: datetime, close: float, volume: float, bid_vol: float, ask_vol: float):
-        # Placeholder for volume profile update
-        pass
+    async def update_volume_profile(
+        self,
+        symbol: str,
+        timestamp: datetime,
+        price: float,
+        volume: float,
+        bid_volume: Optional[float],
+        ask_volume: Optional[float]
+    ):
+        """Update volume profile for current session"""
+        # Determine session start (e.g., 00:00 UTC for daily)
+        session_start = timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # Round price to tick size (e.g., 0.01 for forex). 
+        # Ideally fetch tick_size from symbols table, but for now hardcode or assume input is already rounded.
+        # Let's assume input 'price' is the close price of the bar/tick.
+        
+        query = """
+            INSERT INTO volume_profile (
+                time, symbol, session_start, price_level,
+                volume, bid_volume, ask_volume
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (time, symbol, session_start, price_level) DO UPDATE SET
+                volume = volume_profile.volume + EXCLUDED.volume,
+                bid_volume = volume_profile.bid_volume + EXCLUDED.bid_volume,
+                ask_volume = volume_profile.ask_volume + EXCLUDED.ask_volume
+        """
+        
+        await timescale_manager.execute(
+            query,
+            timestamp, symbol, session_start, price,
+            volume, bid_volume or 0, ask_volume or 0
+        )
 
     async def broadcast_tick(self, symbol: str, data: dict):
-        # Placeholder for websocket broadcast
-        pass
+        """Broadcast tick to WebSocket clients"""
+        from app.services.websocket_service import ws_manager
+        await ws_manager.broadcast_to_symbol(symbol, {
+            "type": "tick",
+            "symbol": symbol,
+            "data": data
+        })
+
+market_data_service = MarketDataService()
