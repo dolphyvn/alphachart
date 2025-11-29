@@ -165,3 +165,22 @@ async def get_volume_profile(
         
     profile = await service.get_volume_profile(symbol, start_time, end_time)
     return profile
+
+@router.get("/footprint")
+async def get_footprint(
+    symbol: str,
+    timeframe: str = "1m",
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    service: MarketDataService = Depends()
+):
+    """
+    Get footprint data (volume at price per bar).
+    """
+    if not end_time:
+        end_time = datetime.utcnow()
+    if not start_time:
+        start_time = end_time - timedelta(hours=1)
+        
+    footprint = await service.get_footprint_data(symbol, timeframe, start_time, end_time)
+    return footprint

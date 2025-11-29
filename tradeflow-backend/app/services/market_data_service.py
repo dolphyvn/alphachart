@@ -216,6 +216,44 @@ class MarketDataService:
         rows = await timescale_manager.fetch(query, symbol, start_time, end_time)
         return [dict(row) for row in rows]
 
+    async def get_footprint_data(self, symbol: str, timeframe: str, start_time: datetime, end_time: datetime) -> List[Dict[str, Any]]:
+        """
+        Get footprint data (volume at price per bar).
+        Aggregates 1s data into the requested timeframe buckets, then groups by price level within each bucket.
+        """
+        interval = self._parse_timeframe(timeframe)
+        
+        query = """
+            SELECT 
+                time_bucket($1, time) AS bucket,
+                round(close::numeric, 2) as price,
+                sum(volume) as volume,
+                sum(bid_volume) as bid_volume,
+                sum(ask_volume) as ask_volume
+            FROM market_data
+            WHERE symbol = $2 AND timeframe = '1s' AND time >= $3 AND time <= $4
+            GROUP BY bucket, price
+            ORDER BY bucket DESC, price DESC
+        """
+        
+        rows = await timescale_manager.fetch(query, interval, symbol, start_time, end_time)
+        
+        # Group by bucket (bar time)
+        result = {}
+        for row in rows:
+            bucket = row['bucket'].isoformat()
+            if bucket not in result:
+                result[bucket] = []
+            
+            result[bucket].append({
+                'price': float(row['price']),
+                'volume': float(row['volume']),
+                'bid_volume': float(row['bid_volume'] or 0),
+                'ask_volume': float(row['ask_volume'] or 0)
+            })
+            
+        return [{'time': k, 'levels': v} for k, v in result.items()]
+
     async def broadcast_tick(self, symbol: str, data: dict):
         """Broadcast tick to WebSocket clients"""
         from app.services.websocket_service import ws_manager
