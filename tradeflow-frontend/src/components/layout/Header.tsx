@@ -40,7 +40,7 @@ export function Header({ className = '' }: HeaderProps) {
     : (availableSymbols?.success && availableSymbols.data ? (Array.isArray(availableSymbols.data) ? availableSymbols.data.map((symbol: string) => ({
       symbol,
       name: symbol, // Backend doesn't provide names yet
-      asset_type: 'forex',
+      asset_type: 'forex' as const,
       exchange: 'UNKNOWN'
     })) : []) : DEFAULT_SYMBOLS);
 
@@ -69,7 +69,7 @@ export function Header({ className = '' }: HeaderProps) {
   };
 
   const isInWatchlist = (symbol: string) => {
-    return watchlist.some(item => item.symbol === symbol);
+    return watchlist.some((item: WatchlistItem) => item.symbol === symbol);
   };
 
   return (
@@ -129,7 +129,7 @@ export function Header({ className = '' }: HeaderProps) {
                     </div>
                   )}
 
-                  {symbolsToShow.map((symbol) => (
+                  {symbolsToShow.map((symbol: Symbol) => (
                     <div
                       key={symbol.symbol}
                       className="flex items-center justify-between p-3 hover:bg-muted cursor-pointer transition-colors"
