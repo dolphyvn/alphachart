@@ -30,7 +30,13 @@ export function useMarketData({
       try {
         const response = await apiClient.getMarketData(symbol, timeframe, 500);
         if (response.success && response.data) {
-          return response.data;
+          // Ensure bars have the correct structure for tooltip functionality
+          return response.data.map((bar: any) => ({
+            ...bar,
+            bid_volume: bar.bid_volume || bar.BidVolume || 0,
+            ask_volume: bar.ask_volume || bar.AskVolume || 0,
+            number_of_trades: bar.number_of_trades || bar.NumberOfTrades || 0,
+          }));
         }
         throw new Error(response.error || 'Failed to fetch data');
       } catch (error) {
@@ -115,13 +121,21 @@ export function useMarketData({
 
   // Function to update a single bar (for real-time updates)
   const updateBar = (newBar: Bar) => {
+    // Ensure newBar has the correct structure for tooltip functionality
+    const normalizedBar = {
+      ...newBar,
+      bid_volume: newBar.bid_volume || (newBar as any).BidVolume || 0,
+      ask_volume: newBar.ask_volume || (newBar as any).AskVolume || 0,
+      number_of_trades: newBar.number_of_trades || (newBar as any).NumberOfTrades || 0,
+    };
+
     queryClient.setQueryData(
       ['market-data', symbol, timeframe],
       (oldData: Bar[] | undefined) => {
-        if (!oldData) return [newBar];
+        if (!oldData) return [normalizedBar];
 
         // Ensure newBar has a proper time format
-        const barTime = new Date(newBar.time).getTime();
+        const barTime = new Date(normalizedBar.time).getTime();
 
         // Find if we should update the last bar or add a new one
         const lastBar = oldData[oldData.length - 1];
@@ -130,11 +144,11 @@ export function useMarketData({
         if (barTime === lastBarTime) {
           // Update existing bar (candle update)
           const updatedData = [...oldData];
-          updatedData[updatedData.length - 1] = newBar;
+          updatedData[updatedData.length - 1] = normalizedBar;
           return updatedData;
         } else if (barTime > lastBarTime) {
           // Add new bar
-          return [...oldData, newBar].slice(-500); // Keep last 500
+          return [...oldData, normalizedBar].slice(-500); // Keep last 500
         }
 
         return oldData;
@@ -144,13 +158,21 @@ export function useMarketData({
 
   // Function to add multiple bars (for batch updates)
   const addBars = (newBars: Bar[]) => {
+    // Ensure newBars have the correct structure for tooltip functionality
+    const normalizedBars = newBars.map(bar => ({
+      ...bar,
+      bid_volume: bar.bid_volume || (bar as any).BidVolume || 0,
+      ask_volume: bar.ask_volume || (bar as any).AskVolume || 0,
+      number_of_trades: bar.number_of_trades || (bar as any).NumberOfTrades || 0,
+    }));
+
     queryClient.setQueryData(
       ['market-data', symbol, timeframe],
       (oldData: Bar[] | undefined) => {
-        if (!oldData) return newBars;
+        if (!oldData) return normalizedBars;
 
         // Combine and deduplicate
-        const combined = [...newBars, ...oldData];
+        const combined = [...normalizedBars, ...oldData];
         const uniqueBars = combined.filter((bar, index, self) =>
           index === self.findIndex(b => b.time === bar.time)
         );

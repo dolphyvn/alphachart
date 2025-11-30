@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useChart } from '@/hooks/useChart';
 import { useMarketData } from '@/hooks/useMarketData';
 import { Bar, Indicator, ChartType } from '@/types';
+import { CandleTooltip } from './CandleTooltip';
 
 interface TradingChartProps {
   symbol: string;
@@ -27,6 +28,18 @@ export function TradingChart({
   onBarUpdate,
 }: TradingChartProps) {
   const { bars, isLoading, error } = useMarketData({ symbol, timeframe });
+  const [tooltipState, setTooltipState] = useState<{
+    bar: Bar | null;
+    visible: boolean;
+    x: number;
+    y: number;
+  }>({
+    bar: null,
+    visible: false,
+    x: 0,
+    y: 0,
+  });
+
   const {
     containerRef,
     isReady,
@@ -37,6 +50,7 @@ export function TradingChart({
     updateTheme,
     fitContent,
     updateCandle,
+    setCrosshairMoveCallback,
   } = useChart({ symbol, timeframe, theme, chartType, width, height });
 
   // Track state to differentiate between initial load and updates
@@ -86,6 +100,30 @@ export function TradingChart({
     }
   }, [theme, isReady]);
 
+  // Setup crosshair move callback for tooltip
+  useEffect(() => {
+    if (!isReady) return;
+
+    const handleCrosshairMove = (bar: Bar | null, x: number, y: number) => {
+      if (containerRef.current && bar) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const relativeX = x;
+        const relativeY = y;
+
+        setTooltipState({
+          bar,
+          visible: true,
+          x: relativeX,
+          y: relativeY,
+        });
+      } else {
+        setTooltipState(prev => ({ ...prev, visible: false }));
+      }
+    };
+
+    setCrosshairMoveCallback(handleCrosshairMove);
+  }, [isReady, containerRef, setCrosshairMoveCallback]);
+
   // Manage indicators
   useEffect(() => {
     if (!isReady) return;
@@ -108,6 +146,14 @@ export function TradingChart({
         ref={containerRef}
         className="w-full h-full"
         style={{ width, height }}
+      />
+
+      {/* Candle Tooltip */}
+      <CandleTooltip
+        bar={tooltipState.bar}
+        visible={tooltipState.visible}
+        x={tooltipState.x}
+        y={tooltipState.y}
       />
 
       {/* Loading Overlay */}

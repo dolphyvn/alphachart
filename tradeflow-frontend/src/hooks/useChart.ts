@@ -93,6 +93,12 @@ export function useChart(options: UseChartOptions) {
     chartRef.current.updateCandle(bar);
   };
 
+  // Set crosshair move callback
+  const setCrosshairMoveCallback = (callback: (bar: Bar | null, x: number, y: number) => void) => {
+    if (!chartRef.current || !isReady) return;
+    chartRef.current.setCrosshairMoveCallback(callback);
+  };
+
   return {
     containerRef,
     isReady,
@@ -103,5 +109,6 @@ export function useChart(options: UseChartOptions) {
     updateTheme,
     fitContent,
     updateCandle,
+    setCrosshairMoveCallback,
   };
 }

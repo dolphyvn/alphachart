@@ -5,6 +5,9 @@ export interface Bar {
   low: number;
   close: number;
   volume: number;
+  bid_volume?: number;
+  ask_volume?: number;
+  number_of_trades?: number;
 }
 
 export interface MarketData {

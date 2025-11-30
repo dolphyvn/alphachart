@@ -16,6 +16,8 @@ export class TradingChart {
   private series: Map<string, ISeriesApi<any>> = new Map();
   private options: ChartOptions;
   private resizeObserver: ResizeObserver | null = null;
+  private barData: Bar[] = [];
+  private onCrosshairMove?: ((bar: Bar | null, x: number, y: number) => void) | null;
 
   constructor(options: ChartOptions) {
     this.options = options;
@@ -76,6 +78,9 @@ export class TradingChart {
 
     // Add main candlestick series
     this.addCandlestickSeries();
+
+    // Setup crosshair move listener
+    this.setupCrosshairListener();
   }
 
   private getThemeColors() {
@@ -139,6 +144,86 @@ export class TradingChart {
     this.series.set('candlestick', candlestickSeries);
   }
 
+  private setupCrosshairListener() {
+    if (!this.chart) return;
+
+    this.chart.subscribeCrosshairMove((param) => {
+      if (!param.point || !param.time || !this.onCrosshairMove) {
+        this.onCrosshairMove?.(null, 0, 0);
+        return;
+      }
+
+      // Find the bar data for the current crosshair time
+      const crosshairTime = param.time;
+      const bar = this.findBarByTime(crosshairTime);
+
+      if (bar && param.point) {
+        this.onCrosshairMove(bar, param.point.x, param.point.y);
+      } else {
+        this.onCrosshairMove(null, 0, 0);
+      }
+    });
+  }
+
+  private findBarByTime(time: Time): Bar | null {
+    if (this.barData.length === 0) return null;
+
+    // Convert time to number for comparison
+    let crosshairTimestamp: number;
+    if (typeof time === 'number') {
+      crosshairTimestamp = time;
+    } else if (typeof time === 'string') {
+      crosshairTimestamp = new Date(time).getTime() / 1000;
+    } else {
+      // BusinessDay type - handle it appropriately
+      crosshairTimestamp = Date.parse(`${time.year}-${time.month.toString().padStart(2, '0')}-${time.day.toString().padStart(2, '0')}`) / 1000;
+    }
+
+    // Find the bar with closest time
+    let closestBar = this.barData[0];
+    const closestBarTimestamp = this.convertTimeToNumber(closestBar.time);
+    let minDiff = Math.abs(crosshairTimestamp - closestBarTimestamp);
+
+    for (const bar of this.barData) {
+      const barTimestamp = this.convertTimeToNumber(bar.time);
+      const diff = Math.abs(crosshairTimestamp - barTimestamp);
+
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestBar = bar;
+      }
+    }
+
+    // Only return if within reasonable tolerance (e.g., same timeframe)
+    if (minDiff <= this.getTimeframeTolerance()) {
+      return closestBar;
+    }
+
+    return null;
+  }
+
+  private getTimeframeTolerance(): number {
+    // Return tolerance in seconds based on timeframe
+    const timeframe = this.options.timeframe;
+    if (timeframe.includes('s')) {
+      return parseInt(timeframe) + 1;
+    }
+    if (timeframe.includes('m')) {
+      return parseInt(timeframe) * 60 + 30;
+    }
+    if (timeframe.includes('h')) {
+      return parseInt(timeframe) * 3600 + 1800;
+    }
+    if (timeframe.includes('D')) {
+      return 86400; // 1 day
+    }
+    return 30; // default 30 seconds
+  }
+
+  setCrosshairMoveCallback(callback: (bar: Bar | null, x: number, y: number) => void) {
+    this.onCrosshairMove = callback;
+  }
+
   private getPricePrecision(): number {
     // Determine precision based on current symbol
     const symbol = this.options.symbol.toLowerCase();
@@ -150,6 +235,9 @@ export class TradingChart {
   updateData(bars: Bar[]) {
     const candlestickSeries = this.series.get('candlestick') as ISeriesApi<'Candlestick'>;
     if (!candlestickSeries || !bars.length) return;
+
+    // Store bar data for tooltip
+    this.barData = [...bars];
 
     // Convert bars to lightweight-charts format
     const chartData = bars.map(bar => ({
@@ -287,6 +375,15 @@ export class TradingChart {
 
     // Convert ISO string to timestamp
     return (new Date(time).getTime() / 1000) as Time;
+  }
+
+  private convertTimeToNumber(time: string | number): number {
+    if (typeof time === 'number') {
+      return time;
+    }
+
+    // Convert ISO string to timestamp
+    return new Date(time).getTime() / 1000;
   }
 
   updateSize(width: number, height: number) {
