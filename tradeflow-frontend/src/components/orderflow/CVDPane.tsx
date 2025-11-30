@@ -187,28 +187,11 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
       setTimeout(() => {
         if (chartRef.current && data.length > 0) {
           console.log('Fitting chart content...');
-          const timeScale = chartRef.current.timeScale();
 
-          // Get the time range of our data
-          const timeRange = {
-            from: Math.min(...data.map(d => new Date(d.time).getTime() / 1000)),
-            to: Math.max(...data.map(d => new Date(d.time).getTime() / 1000))
-          };
+          // Fit to content first - this should properly handle the time range
+          chartRef.current.timeScale().fitContent();
 
-          console.log('CVD data time range:', timeRange);
-
-          // Fit to content first
-          timeScale.fitContent();
-
-          // Ensure the full data range is visible by extending if needed
-          const visibleRange = timeScale.getVisibleRange();
-          if (visibleRange && (visibleRange.from > timeRange.from || visibleRange.to < timeRange.to)) {
-            console.log('Extending visible range to match data:', {
-              current: visibleRange,
-              data: timeRange
-            });
-            timeScale.setVisibleRange(timeRange.from, timeRange.to);
-          }
+          console.log('CVD chart fitted to content successfully');
         }
       }, 100);
 
