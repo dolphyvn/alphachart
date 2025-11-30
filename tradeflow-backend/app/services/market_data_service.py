@@ -289,6 +289,69 @@ class MarketDataService:
             
         return result
 
+    async def get_available_symbols(self) -> List[str]:
+        """
+        Get list of all available symbols from the database
+        """
+        query = """
+            SELECT DISTINCT symbol
+            FROM market_data
+            ORDER BY symbol ASC
+        """
+        rows = await timescale_manager.fetch(query)
+        return [row['symbol'] for row in rows]
+
+    async def get_symbol_info(self, symbol: str) -> dict:
+        """
+        Get detailed information about a specific symbol
+        """
+        # Get basic symbol stats
+        query = """
+            SELECT
+                symbol,
+                COUNT(*) as total_bars,
+                MIN(time) as first_data_time,
+                MAX(time) as last_data_time,
+                COUNT(DISTINCT timeframe) as available_timeframes,
+                AVG(volume) as avg_volume,
+                MAX(volume) as max_volume,
+                MIN(low) as min_price,
+                MAX(high) as max_price
+            FROM market_data
+            WHERE symbol = $1
+            GROUP BY symbol
+        """
+        rows = await timescale_manager.fetch(query, symbol)
+
+        if not rows:
+            return {"error": "Symbol not found"}
+
+        row = rows[0]
+
+        # Get available timeframes for this symbol
+        timeframes_query = """
+            SELECT DISTINCT timeframe
+            FROM market_data
+            WHERE symbol = $1
+            ORDER BY timeframe
+        """
+        timeframe_rows = await timescale_manager.fetch(timeframes_query, symbol)
+        timeframes = [row['timeframe'] for row in timeframe_rows]
+
+        return {
+            "symbol": row['symbol'],
+            "total_bars": row['total_bars'],
+            "first_data_time": row['first_data_time'].isoformat() if row['first_data_time'] else None,
+            "last_data_time": row['last_data_time'].isoformat() if row['last_data_time'] else None,
+            "available_timeframes": timeframes,
+            "avg_volume": float(row['avg_volume']) if row['avg_volume'] else 0,
+            "max_volume": float(row['max_volume']) if row['max_volume'] else 0,
+            "price_range": {
+                "min": float(row['min_price']) if row['min_price'] else 0,
+                "max": float(row['max_price']) if row['max_price'] else 0
+            }
+        }
+
     async def broadcast_tick(self, symbol: str, data: dict):
         """Broadcast tick to WebSocket clients"""
         from app.services.websocket_service import ws_manager

@@ -30,7 +30,7 @@ class ApiClient {
       if (!response.ok) {
         return {
           success: false,
-          error: data.message || `HTTP ${response.status}: ${response.statusText}`,
+          error: data.message || data.detail || `HTTP ${response.status}: ${response.statusText}`,
         };
       }
 
@@ -61,20 +61,6 @@ class ApiClient {
 
   async searchSymbols(query: string): Promise<APIResponse<Symbol[]>> {
     return this.request<Symbol[]>(`/api/v1/symbols/search?q=${encodeURIComponent(query)}`);
-  }
-
-  async getAvailableSymbols(): Promise<APIResponse<string[]>> {
-    const response = await this.request<{ symbols: string[] }>('/api/v1/market-data/symbols');
-    if (response.success && response.data) {
-      return {
-        success: true,
-        data: response.data.symbols
-      };
-    }
-    return {
-      success: false,
-      error: response.error || 'Failed to fetch symbols'
-    };
   }
 
   // Indicators

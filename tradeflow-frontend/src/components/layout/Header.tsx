@@ -1,95 +1,221 @@
-import React from 'react';
-import { Indicator } from '@/types/chart';
-import { DrawingTool } from '@/hooks/useDrawings';
+'use client';
+
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, TrendingUp, TrendingDown, X, Settings, Layout, Loader } from 'lucide-react';
+import { Symbol, Timeframe, ChartType, WatchlistItem } from '@/types';
+import { TIMEFRAMES, CHART_TYPES, DEFAULT_SYMBOLS } from '@/lib/constants';
+import { useChartStore } from '@/lib/stores/chart-store';
+import { useAvailableSymbols, useSymbolSearch } from '@/hooks/useSymbols';
 
 interface HeaderProps {
-    symbol: string;
-    onSymbolChange: (s: string) => void;
-    timeframe: string;
-    onTimeframeChange: (t: string) => void;
-    onAddIndicator: (type: Indicator['type']) => void;
-    activeTool: DrawingTool;
-    onToolChange: (tool: DrawingTool) => void;
+  className?: string;
 }
 
-export const Header: React.FC<HeaderProps> = ({
-    symbol, onSymbolChange, timeframe, onTimeframeChange, onAddIndicator,
-    activeTool, onToolChange
-}) => {
-    const timeframes = ['1s', '1m', '5m', '15m', '1h', '4h', '1d'];
-    const symbols = ['XAUUSD', 'BTCUSD', 'EURUSD', 'ETHUSD'];
+export function Header({ className = '' }: HeaderProps) {
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-    return (
-        <header className="flex items-center h-14 px-4 border-b bg-background border-border gap-4">
-            <div className="font-bold text-lg mr-4 text-primary">TradeFlow</div>
+  const {
+    currentSymbol,
+    currentTimeframe,
+    chartType,
+    theme,
+    setCurrentSymbol,
+    setCurrentTimeframe,
+    setChartType,
+    watchlist,
+    addToWatchlist,
+  } = useChartStore();
 
-            {/* Symbol Search */}
-            <div className="relative">
-                <select
-                    value={symbol}
-                    onChange={(e) => onSymbolChange(e.target.value)}
-                    className="h-8 px-2 bg-muted rounded border border-input text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                    {symbols.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-            </div>
+  // Fetch available symbols from API
+  const { data: availableSymbols, isLoading: symbolsLoading, error: symbolsError } = useAvailableSymbols();
 
-            <div className="w-px h-6 bg-border mx-2" />
+  // Search symbols when query changes
+  const { data: searchResults, isLoading: searchLoading } = useSymbolSearch(searchQuery);
 
-            {/* Timeframes */}
-            <div className="flex items-center gap-1">
-                {timeframes.map(tf => (
-                    <button
-                        key={tf}
-                        onClick={() => onTimeframeChange(tf)}
-                        className={`px-2 py-1 text-xs font-medium rounded hover:bg-muted transition-colors ${timeframe === tf ? 'text-primary bg-muted' : 'text-muted-foreground'}`}
+  // Convert string symbols to Symbol objects or use search results
+  const symbolsToShow = searchQuery
+    ? (searchResults?.success && searchResults.data ? searchResults.data : [])
+    : (availableSymbols?.success && availableSymbols.data ? (Array.isArray(availableSymbols.data) ? availableSymbols.data.map((symbol: string) => ({
+      symbol,
+      name: symbol, // Backend doesn't provide names yet
+      asset_type: 'forex' as const,
+      exchange: 'UNKNOWN'
+    })) : []) : DEFAULT_SYMBOLS);
+
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
+
+  const handleSymbolSelect = (symbol: Symbol) => {
+    setCurrentSymbol(symbol);
+    setIsSearchOpen(false);
+    setSearchQuery('');
+  };
+
+  const toggleWatchlist = (symbol: Symbol) => {
+    const watchlistItem: WatchlistItem = {
+      symbol: symbol.symbol,
+      name: symbol.name,
+      lastPrice: 0, // Would come from real data
+      change: 0,
+      changePercent: 0,
+      volume: 0,
+    };
+    addToWatchlist(watchlistItem);
+  };
+
+  const isInWatchlist = (symbol: string) => {
+    return watchlist.some((item: WatchlistItem) => item.symbol === symbol);
+  };
+
+  return (
+    <header className={`border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${className}`}>
+      <div className="flex h-16 items-center px-4 gap-4">
+        {/* Left Section - Symbol Search */}
+        <div className="flex items-center gap-2 flex-1">
+          <div className="relative">
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition-colors"
+            >
+              <Search className="h-4 w-4" />
+              <span className="font-medium">{currentSymbol.symbol}</span>
+              <span className="text-sm text-muted-foreground">{currentSymbol.name}</span>
+            </button>
+
+            {/* Symbol Search Dropdown */}
+            {isSearchOpen && (
+              <div className="absolute top-full left-0 mt-1 w-96 bg-background border rounded-lg shadow-lg z-50">
+                <div className="p-3 border-b">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search symbols..."
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {symbolsLoading && !searchQuery && (
+                    <div className="p-4 text-center">
+                      <Loader className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Loading symbols...</p>
+                    </div>
+                  )}
+
+                  {symbolsError && (
+                    <div className="p-4 text-center">
+                      <p className="text-sm text-destructive">Error loading symbols</p>
+                    </div>
+                  )}
+
+                  {searchLoading && (
+                    <div className="p-4 text-center">
+                      <Loader className="h-4 w-4 animate-spin mx-auto" />
+                      <p className="text-sm text-muted-foreground">Searching...</p>
+                    </div>
+                  )}
+
+                  {!symbolsLoading && !symbolsError && symbolsToShow.length === 0 && (
+                    <div className="p-4 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        {searchQuery ? 'No symbols found' : 'No symbols available'}
+                      </p>
+                    </div>
+                  )}
+
+                  {symbolsToShow.map((symbol: Symbol) => (
+                    <div
+                      key={symbol.symbol}
+                      className="flex items-center justify-between p-3 hover:bg-muted cursor-pointer transition-colors"
+                      onClick={() => handleSymbolSelect(symbol)}
                     >
-                        {tf}
-                    </button>
-                ))}
-            </div>
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <div className="font-medium">{symbol.symbol}</div>
+                          <div className="text-sm text-muted-foreground">{symbol.name}</div>
+                        </div>
+                        <span className="text-xs px-2 py-1 bg-muted rounded">
+                          {symbol.asset_type.toUpperCase()}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleWatchlist(symbol);
+                        }}
+                        className={`p-1 rounded transition-colors ${isInWatchlist(symbol.symbol)
+                          ? 'text-primary bg-primary/10'
+                          : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                      >
+                        {isInWatchlist(symbol.symbol) ? '★' : '☆'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-2 border-t flex justify-end">
+                  <button
+                    onClick={() => setIsSearchOpen(false)}
+                    className="p-1 hover:bg-muted rounded"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
-            <div className="w-px h-6 bg-border mx-2" />
+        {/* Center Section - Timeframe Selector */}
+        <div className="flex items-center gap-1">
+          {TIMEFRAMES.map((timeframe) => (
+            <button
+              key={timeframe.value}
+              onClick={() => setCurrentTimeframe(timeframe)}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentTimeframe.value === timeframe.value
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+            >
+              {timeframe.label}
+            </button>
+          ))}
+        </div>
 
-            {/* Indicators */}
-            <div className="flex items-center gap-2">
-                <button onClick={() => onAddIndicator('SMA')} className="px-3 py-1 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded transition-colors">
-                    + SMA
-                </button>
-                <button onClick={() => onAddIndicator('EMA')} className="px-3 py-1 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded transition-colors">
-                    + EMA
-                </button>
-                <button onClick={() => onAddIndicator('BOLLINGER')} className="px-3 py-1 text-xs font-medium bg-secondary hover:bg-secondary/80 rounded transition-colors">
-                    + BB
-                </button>
-            </div>
+        {/* Right Section - Chart Type & Actions */}
+        <div className="flex items-center gap-2">
+          {/* Chart Type Selector */}
+          <div className="flex items-center gap-1 border rounded-md p-1">
+            {CHART_TYPES.map((type) => (
+              <button
+                key={type.id}
+                onClick={() => setChartType(type)}
+                className={`px-2 py-1 rounded text-sm transition-colors ${chartType.id === type.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                title={type.label}
+              >
+                {type.label.charAt(0)}
+              </button>
+            ))}
+          </div>
 
-            <div className="w-px h-6 bg-border mx-2" />
-
-            {/* Drawing Tools */}
-            <div className="flex items-center gap-1">
-                <button
-                    onClick={() => onToolChange('cursor')}
-                    className={`p-1.5 rounded hover:bg-muted ${activeTool === 'cursor' ? 'bg-muted text-primary' : 'text-muted-foreground'}`}
-                    title="Cursor"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z" /><path d="m13 13 6 6" /></svg>
-                </button>
-                <button
-                    onClick={() => onToolChange('line')}
-                    className={`p-1.5 rounded hover:bg-muted ${activeTool === 'line' ? 'bg-muted text-primary' : 'text-muted-foreground'}`}
-                    title="Trend Line"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="19" x2="19" y2="5" /></svg>
-                </button>
-                <button
-                    onClick={() => onToolChange('rect')}
-                    className={`p-1.5 rounded hover:bg-muted ${activeTool === 'rect' ? 'bg-muted text-primary' : 'text-muted-foreground'}`}
-                    title="Rectangle"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /></svg>
-                </button>
-            </div>
-        </header>
-    );
-};
+          {/* Action Buttons */}
+          <button className="p-2 rounded-md hover:bg-muted transition-colors" title="Layout">
+            <Layout className="h-4 w-4" />
+          </button>
+          <button className="p-2 rounded-md hover:bg-muted transition-colors" title="Settings">
+            <Settings className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}

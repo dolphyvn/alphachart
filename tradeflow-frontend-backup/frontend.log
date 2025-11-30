@@ -1,0 +1,11 @@
+
+> tradeflow-frontend@0.1.0 start
+> next start
+
+   ▲ Next.js 16.0.5
+   - Local:         http://localhost:3000
+   - Network:       http://37.187.77.139:3000
+
+ ✓ Starting...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Ready in 1165ms
