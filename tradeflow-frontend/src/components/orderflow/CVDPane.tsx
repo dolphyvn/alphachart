@@ -1,0 +1,244 @@
+import React, { useEffect, useRef } from 'react';
+import {
+  createChart,
+  ColorType,
+  IChartApi,
+  ISeriesApi,
+  Time,
+  LineSeries,
+  HistogramSeries
+} from 'lightweight-charts';
+import { CVDDatum, OrderFlowConfig } from '@/types';
+
+interface CVDPaneProps {
+  data: CVDDatum[];
+  config: OrderFlowConfig['cvdSettings'];
+  width: number;
+  height: number;
+  theme: 'light' | 'dark';
+}
+
+export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const cumulativeSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const deltaSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !data.length) return;
+
+    // Initialize chart
+    const chart = createChart(containerRef.current, {
+      width,
+      height,
+      layout: {
+        background: { type: ColorType.Solid, color: theme === 'dark' ? '#1a1a1a' : '#ffffff' },
+        textColor: theme === 'dark' ? '#d1d5db' : '#374151',
+        fontSize: 11,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      },
+      grid: {
+        vertLines: { color: theme === 'dark' ? '#374151' : '#e5e7eb' },
+        horzLines: { color: theme === 'dark' ? '#374151' : '#e5e7eb' },
+      },
+      crosshair: {
+        mode: 1,
+        vertLine: {
+          color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+          width: 1,
+          style: 3,
+        },
+        horzLine: {
+          color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+          width: 1,
+          style: 3,
+        },
+      },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: true,
+        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+      },
+      rightPriceScale: {
+        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+        autoScale: true,
+      },
+      leftPriceScale: {
+        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+        autoScale: true,
+        visible: config.showDelta,
+      },
+    });
+
+    chartRef.current = chart;
+
+    // Add cumulative delta series (line chart)
+    if (config.showCumulative) {
+      const cumulativeSeries = chart.addSeries(LineSeries, {
+        color: config.colorPositive,
+        lineWidth: config.lineWidth as any, // Type assertion for compatibility
+        title: 'CVD',
+        priceScaleId: 'right',
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+
+      cumulativeSeriesRef.current = cumulativeSeries;
+
+      // Prepare cumulative delta data
+      const cumulativeData = data.map((datum) => ({
+        time: convertTime(datum.time),
+        value: datum.cumulativeDelta,
+      }));
+
+      cumulativeSeries.setData(cumulativeData);
+    }
+
+    // Add delta series (histogram)
+    if (config.showDelta) {
+      const deltaSeries = chart.addSeries(HistogramSeries, {
+        color: '#4ade80', // Will be updated per bar
+        priceFormat: {
+          type: 'volume',
+        },
+        priceScaleId: 'left',
+        title: 'Delta',
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+
+      deltaSeriesRef.current = deltaSeries;
+
+      // Prepare delta data with color coding
+      const deltaData = data.map((datum) => ({
+        time: convertTime(datum.time),
+        value: datum.delta,
+        color: datum.delta >= 0 ? config.colorPositive : config.colorNegative,
+      }));
+
+      deltaSeries.setData(deltaData);
+    }
+
+    // Fit content to show all data
+    setTimeout(() => {
+      chart.timeScale().fitContent();
+    }, 100);
+
+    return () => {
+      chart.remove();
+      chartRef.current = null;
+    };
+  }, [data, config, width, height, theme]);
+
+  // Update chart when data changes
+  useEffect(() => {
+    if (!chartRef.current || !data.length) return;
+
+    if (config.showCumulative && cumulativeSeriesRef.current) {
+      const cumulativeData = data.map((datum) => ({
+        time: convertTime(datum.time),
+        value: datum.cumulativeDelta,
+      }));
+      cumulativeSeriesRef.current.setData(cumulativeData);
+    }
+
+    if (config.showDelta && deltaSeriesRef.current) {
+      const deltaData = data.map((datum) => ({
+        time: convertTime(datum.time),
+        value: datum.delta,
+        color: datum.delta >= 0 ? config.colorPositive : config.colorNegative,
+      }));
+      deltaSeriesRef.current.setData(deltaData);
+    }
+  }, [data, config]);
+
+  // Handle resize
+  useEffect(() => {
+    if (chartRef.current) {
+      chartRef.current.applyOptions({ width, height });
+    }
+  }, [width, height]);
+
+  // Time conversion helper
+  const convertTime = (time: string): Time => {
+    const date = new Date(time);
+    return Math.floor(date.getTime() / 1000) as Time;
+  };
+
+  // Calculate statistics
+  const getStatistics = () => {
+    if (!data.length) return null;
+
+    const latest = data[data.length - 1];
+    const totalDelta = latest?.cumulativeDelta || 0;
+    const currentDelta = latest?.delta || 0;
+    const totalVolume = latest?.volume || 0;
+
+    const maxDelta = Math.max(...data.map(d => d.cumulativeDelta));
+    const minDelta = Math.min(...data.map(d => d.cumulativeDelta));
+
+    return {
+      totalDelta,
+      currentDelta,
+      totalVolume,
+      maxDelta,
+      minDelta,
+      deltaPercent: totalVolume > 0 ? (totalDelta / totalVolume) * 100 : 0,
+    };
+  };
+
+  const stats = getStatistics();
+
+  return (
+    <div className="relative w-full h-full">
+      <div ref={containerRef} className="w-full h-full" />
+
+      {/* Statistics overlay */}
+      {stats && (
+        <div className="absolute top-4 left-4 bg-background/80 backdrop-blur px-3 py-2 rounded-md text-xs z-20 pointer-events-none">
+          <div className="space-y-1 font-mono">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">CVD:</span>
+              <span className={`font-medium ${stats.totalDelta >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {stats.totalDelta >= 0 ? '+' : ''}{stats.totalDelta.toFixed(0)}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Delta:</span>
+              <span className={`font-medium ${stats.currentDelta >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {stats.currentDelta >= 0 ? '+' : ''}{stats.currentDelta.toFixed(0)}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Delta%:</span>
+              <span className={`font-medium ${stats.deltaPercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {stats.deltaPercent >= 0 ? '+' : ''}{stats.deltaPercent.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Legend */}
+      <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur px-3 py-2 rounded-md text-xs z-20 pointer-events-none">
+        <div className="flex gap-4">
+          {config.showCumulative && (
+            <div className="flex items-center gap-2">
+              <div
+                className="w-3 h-0.5 rounded-full"
+                style={{ backgroundColor: config.colorPositive }}
+              />
+              <span>Cumulative</span>
+            </div>
+          )}
+          {config.showDelta && (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-500 rounded-sm" />
+              <span>Delta</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

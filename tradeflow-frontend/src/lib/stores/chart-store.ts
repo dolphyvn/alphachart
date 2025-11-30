@@ -8,7 +8,8 @@ import {
   Indicator,
   DrawingTool,
   WatchlistItem,
-  OrderFlowData
+  OrderFlowData,
+  OrderFlowConfig
 } from '@/types';
 import { DEFAULT_SYMBOLS, TIMEFRAMES, CHART_TYPES } from '@/lib/constants';
 
@@ -40,10 +41,38 @@ interface ChartStore extends AppState {
 
   // Order Flow
   setOrderFlowData: (data: OrderFlowData) => void;
+  setOrderFlowConfig: (config: OrderFlowConfig) => void;
+  updateOrderFlowConfig: (updates: Partial<OrderFlowConfig>) => void;
 
   // Layout
   resetLayout: () => void;
 }
+
+const defaultOrderFlowConfig: OrderFlowConfig = {
+  enabled: false,
+  type: 'none',
+  cvdSettings: {
+    colorPositive: '#22c55e',
+    colorNegative: '#ef4444',
+    lineWidth: 2,
+    showCumulative: true,
+    showDelta: true,
+  },
+  volumeProfileSettings: {
+    areaStyle: 'gradient',
+    colorScheme: 'bidask',
+    showPOC: true,
+    showVA: true,
+    valueAreaPercent: 70,
+  },
+  footprintSettings: {
+    displayMode: 'split',
+    colorScheme: 'bidask',
+    showNumbers: true,
+    showTotal: true,
+    aggregateTrades: true,
+  },
+};
 
 const initialState: Omit<AppState, 'layout'> = {
   currentSymbol: DEFAULT_SYMBOLS[0],
@@ -72,10 +101,7 @@ export const useChartStore = create<ChartStore>()(
         chartType: initialState.chartType,
         indicators: [],
         drawings: [],
-        orderFlow: {
-          enabled: false,
-          type: 'none'
-        }
+        orderFlow: defaultOrderFlowConfig
       },
 
       setCurrentSymbol: (symbol) =>
@@ -198,6 +224,19 @@ export const useChartStore = create<ChartStore>()(
       setOrderFlowData: (data) =>
         set({ orderFlow: data }, false, 'setOrderFlowData'),
 
+      setOrderFlowConfig: (config) =>
+        set((state) => ({
+          layout: { ...state.layout, orderFlow: config }
+        }), false, 'setOrderFlowConfig'),
+
+      updateOrderFlowConfig: (updates) =>
+        set((state) => ({
+          layout: {
+            ...state.layout,
+            orderFlow: { ...state.layout.orderFlow, ...updates }
+          }
+        }), false, 'updateOrderFlowConfig'),
+
       resetLayout: () =>
         set((state) => ({
           layout: {
@@ -208,10 +247,7 @@ export const useChartStore = create<ChartStore>()(
             chartType: state.chartType,
             indicators: [],
             drawings: [],
-            orderFlow: {
-              enabled: false,
-              type: 'none'
-            }
+            orderFlow: defaultOrderFlowConfig
           }
         }), false, 'resetLayout'),
     })),

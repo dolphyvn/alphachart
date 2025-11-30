@@ -67,27 +67,74 @@ export interface WatchlistItem {
   volume: number;
 }
 
+export interface FootprintBar {
+  timestamp: string;
+  price: number;
+  bidVolume: number;
+  askVolume: number;
+  delta: number;
+  imbalanceRatio: number;
+  totalVolume: number;
+}
+
+export interface VolumeProfileLevel {
+  price: number;
+  volume: number;
+  bidVolume: number;
+  askVolume: number;
+  percent: number;
+  buySellRatio: number;
+  type: 'bid' | 'ask' | 'neutral';
+}
+
+export interface CVDDatum {
+  time: string;
+  delta: number;
+  cumulativeDelta: number;
+  volume: number;
+  bidVolume: number;
+  askVolume: number;
+  price: number;
+}
+
 export interface OrderFlowData {
-  footprint: {
-    timestamp: string;
-    price: number;
-    bidVolume: number;
-    askVolume: number;
-    delta: number;
-    imbalanceRatio: number;
-  }[];
-  volumeProfile: {
-    price: number;
-    volume: number;
-    bidVolume: number;
-    askVolume: number;
-    percent: number;
-  }[];
-  cvd: {
-    time: string;
-    delta: number;
-    cumulativeDelta: number;
-  }[];
+  footprint: FootprintBar[];
+  volumeProfile: VolumeProfileLevel[];
+  cvd: CVDDatum[];
+  sessionInfo?: {
+    sessionStart: string;
+    sessionEnd: string;
+    high: number;
+    low: number;
+    totalVolume: number;
+    totalDelta: number;
+  };
+}
+
+export interface OrderFlowConfig {
+  enabled: boolean;
+  type: 'footprint' | 'volume-profile' | 'cvd' | 'none';
+  cvdSettings: {
+    colorPositive: string;
+    colorNegative: string;
+    lineWidth: number;
+    showCumulative: boolean;
+    showDelta: boolean;
+  };
+  volumeProfileSettings: {
+    areaStyle: 'solid' | 'gradient';
+    colorScheme: 'bidask' | 'delta' | 'volume';
+    showPOC: boolean; // Point of Control
+    showVA: boolean;  // Value Area
+    valueAreaPercent: number;
+  };
+  footprintSettings: {
+    displayMode: 'split' | 'stacked' | 'delta';
+    colorScheme: 'bidask' | 'delta';
+    showNumbers: boolean;
+    showTotal: boolean;
+    aggregateTrades: boolean;
+  };
 }
 
 export interface ChartLayout {
@@ -98,10 +145,7 @@ export interface ChartLayout {
   chartType: ChartType;
   indicators: Indicator[];
   drawings: any[];
-  orderFlow: {
-    enabled: boolean;
-    type: 'footprint' | 'volume-profile' | 'cvd' | 'none';
-  };
+  orderFlow: OrderFlowConfig;
 }
 
 export interface AppState {

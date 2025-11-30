@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, Maximize2, Grid3x3, Layers } from 'lucide-react';
+import { Moon, Sun, Maximize2, Grid3x3, Layers, BarChart3 } from 'lucide-react';
 import { Header } from './Header';
 import { Watchlist } from '../watchlist/Watchlist';
 import { IndicatorsPanel } from '../indicators/IndicatorsPanel';
 import { TradingChart } from '../chart/TradingChart';
+import { OrderFlowPanel } from '../orderflow/OrderFlowPanel';
 import { useChartStore } from '@/lib/stores/chart-store';
+import { useMarketData } from '@/hooks/useMarketData';
 
 type LayoutType = 'single' | 'dual-horizontal' | 'dual-vertical' | 'grid';
 
@@ -22,8 +24,15 @@ export function MainLayout() {
     chartType,
     theme,
     indicators,
+    layout,
     setTheme,
+    updateOrderFlowConfig,
   } = useChartStore();
+
+  const { bars } = useMarketData({
+    symbol: currentSymbol.symbol,
+    timeframe: currentTimeframe.value
+  });
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -131,6 +140,20 @@ export function MainLayout() {
           >
             Indicators
           </button>
+          <button
+            onClick={() => updateOrderFlowConfig({
+              enabled: !layout.orderFlow.enabled,
+              type: !layout.orderFlow.enabled ? 'cvd' : 'none'
+            })}
+            className={`px-2 py-1 text-xs rounded transition-colors flex items-center gap-1 ${
+              layout.orderFlow.enabled
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <BarChart3 className="h-3 w-3" />
+            Order Flow
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -203,21 +226,38 @@ export function MainLayout() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Watchlist Sidebar */}
-        {showWatchlist && (
-          <div className="w-80 flex-shrink-0">
-            <Watchlist />
-          </div>
-        )}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex overflow-hidden">
+          {/* Watchlist Sidebar */}
+          {showWatchlist && (
+            <div className="w-80 flex-shrink-0">
+              <Watchlist />
+            </div>
+          )}
 
-        {/* Chart Area */}
-        {renderCharts()}
+          {/* Chart Area */}
+          {renderCharts()}
 
-        {/* Indicators Panel */}
-        {showIndicators && (
-          <div className="w-80 flex-shrink-0">
-            <IndicatorsPanel />
+          {/* Indicators Panel */}
+          {showIndicators && (
+            <div className="w-80 flex-shrink-0">
+              <IndicatorsPanel />
+            </div>
+          )}
+        </div>
+
+        {/* Order Flow Panel */}
+        {layout.orderFlow.enabled && (
+          <div className="border-t">
+            <OrderFlowPanel
+              symbol={currentSymbol.symbol}
+              timeframe={currentTimeframe.value}
+              config={layout.orderFlow}
+              onConfigChange={updateOrderFlowConfig}
+              currentPrice={bars.length > 0 ? bars[bars.length - 1].close : undefined}
+              theme={theme}
+              marketData={bars}
+            />
           </div>
         )}
       </div>
