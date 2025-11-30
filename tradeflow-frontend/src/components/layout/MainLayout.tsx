@@ -58,6 +58,10 @@ export function MainLayout() {
       theme,
       chartType,
       indicators,
+      orderFlowConfig: layout.orderFlow,
+      marketData: bars,
+      currentPrice: bars.length > 0 ? bars[bars.length - 1].close : undefined,
+      onOrderFlowConfigChange: updateOrderFlowConfig,
     };
 
     switch (layoutType) {
@@ -241,22 +245,6 @@ export function MainLayout() {
         {showIndicators && (
           <div className="w-80 flex-shrink-0">
             <IndicatorsPanel />
-          </div>
-        )}
-
-        {/* Order Flow Panel - Fixed Size Bottom Panel */}
-        {layout.orderFlow.enabled && (
-          <div className="w-full h-80 flex-shrink-0 border-t">
-            <OrderFlowPanel
-              symbol={currentSymbol.symbol}
-              timeframe={currentTimeframe.value}
-              config={layout.orderFlow}
-              onConfigChange={updateOrderFlowConfig}
-              currentPrice={bars.length > 0 ? bars[bars.length - 1].close : undefined}
-              theme={theme}
-              marketData={bars}
-              height={320} // Fixed height for order flow panel
-            />
           </div>
         )}
       </div>

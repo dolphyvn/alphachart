@@ -5,6 +5,10 @@ import { useChart } from '@/hooks/useChart';
 import { useMarketData } from '@/hooks/useMarketData';
 import { Bar, Indicator, ChartType } from '@/types';
 import { CandleTooltip } from './CandleTooltip';
+import { CVDPane } from '../orderflow/CVDPane';
+import { VolumeProfilePane } from '../orderflow/VolumeProfilePane';
+import { FootprintChart } from '../orderflow/FootprintChart';
+import { useOrderFlow } from '@/hooks/useOrderFlow';
 
 interface TradingChartProps {
   symbol: string;
@@ -15,6 +19,10 @@ interface TradingChartProps {
   width?: number;
   height?: number;
   onBarUpdate?: (bar: Bar) => void;
+  orderFlowConfig?: any;
+  marketData?: Bar[];
+  currentPrice?: number;
+  onOrderFlowConfigChange?: (config: any) => void;
 }
 
 export function TradingChart({
@@ -26,8 +34,18 @@ export function TradingChart({
   width,
   height,
   onBarUpdate,
+  orderFlowConfig,
+  marketData,
+  currentPrice,
+  onOrderFlowConfigChange,
 }: TradingChartProps) {
   const { bars, isLoading, error } = useMarketData({ symbol, timeframe });
+  const { orderFlowData, isLoading: orderFlowLoading } = useOrderFlow({
+    symbol,
+    timeframe,
+    enabled: orderFlowConfig?.enabled || false,
+    type: orderFlowConfig?.type || 'none'
+  });
   const [tooltipState, setTooltipState] = useState<{
     bar: Bar | null;
     visible: boolean;
@@ -124,6 +142,62 @@ export function TradingChart({
     setCrosshairMoveCallback(handleCrosshairMove);
   }, [isReady, containerRef, setCrosshairMoveCallback]);
 
+  // Render order flow panes
+  const renderOrderFlowPanes = () => {
+    if (!orderFlowConfig?.enabled || orderFlowConfig?.type === 'none') {
+      return null;
+    }
+
+    const paneHeight = 150; // Height for each order flow pane
+    const actualBars = marketData || bars;
+
+    switch (orderFlowConfig.type) {
+      case 'cvd':
+        return (
+          <div className="border-t" style={{ height: `${paneHeight}px` }}>
+            <CVDPane
+              data={(orderFlowData as any)?.cvd || []}
+              config={orderFlowConfig.cvdSettings}
+              width={width || 800}
+              height={paneHeight}
+              theme={theme}
+            />
+          </div>
+        );
+
+      case 'volume-profile':
+        return (
+          <div className="border-t" style={{ height: `${paneHeight}px` }}>
+            <VolumeProfilePane
+              data={(orderFlowData as any)?.volumeProfile || []}
+              config={orderFlowConfig.volumeProfileSettings}
+              width={width || 800}
+              height={paneHeight}
+              theme={theme}
+              currentPrice={currentPrice || (actualBars.length > 0 ? actualBars[actualBars.length - 1].close : undefined)}
+            />
+          </div>
+        );
+
+      case 'footprint':
+        return (
+          <div className="border-t" style={{ height: `${paneHeight * 2}px` }}>
+            <FootprintChart
+              data={(orderFlowData as any)?.footprint || []}
+              config={orderFlowConfig.footprintSettings}
+              width={width || 800}
+              height={paneHeight * 2}
+              theme={theme}
+              currentPrice={currentPrice || (actualBars.length > 0 ? actualBars[actualBars.length - 1].close : undefined)}
+            />
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   // Manage indicators
   useEffect(() => {
     if (!isReady) return;
@@ -141,55 +215,68 @@ export function TradingChart({
   }, [indicators, bars, isReady]);
 
   return (
-    <div className="relative w-full h-full">
-      <div
-        ref={containerRef}
-        className="w-full h-full"
-        style={{ width, height }}
-      />
+    <div className="flex flex-col w-full h-full">
+      {/* Main Chart */}
+      <div className="relative flex-1">
+        <div
+          ref={containerRef}
+          className="w-full h-full"
+          style={{ width, height }}
+        />
 
-      {/* Candle Tooltip */}
-      <CandleTooltip
-        bar={tooltipState.bar}
-        visible={tooltipState.visible}
-        x={tooltipState.x}
-        y={tooltipState.y}
-      />
+        {/* Candle Tooltip */}
+        <CandleTooltip
+          bar={tooltipState.bar}
+          visible={tooltipState.visible}
+          x={tooltipState.x}
+          y={tooltipState.y}
+        />
 
-      {/* Loading Overlay */}
-      {isLoading && bars.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur z-10">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-            <p className="text-sm text-muted-foreground">Loading market data...</p>
+        {/* Loading Overlay */}
+        {isLoading && bars.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur z-10">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+              <p className="text-sm text-muted-foreground">Loading market data...</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Error Overlay */}
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur z-10">
-          <div className="text-center text-destructive">
-            <p className="text-lg font-semibold">Error loading chart data</p>
-            <p className="text-sm opacity-75">{error}</p>
+        {/* Error Overlay */}
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur z-10">
+            <div className="text-center text-destructive">
+              <p className="text-lg font-semibold">Error loading chart data</p>
+              <p className="text-sm opacity-75">{error}</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Chart info overlay */}
-      <div className="absolute top-4 left-4 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs z-20 pointer-events-none">
-        <div className="font-medium">{symbol}</div>
-        <div className="text-muted-foreground">{timeframe}</div>
+        {/* Chart info overlay */}
+        <div className="absolute top-4 left-4 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs z-20 pointer-events-none">
+          <div className="font-medium">{symbol}</div>
+          <div className="text-muted-foreground">{timeframe}</div>
+        </div>
+
+        {/* Last price info */}
+        {bars.length > 0 && (
+          <div className="absolute top-4 right-4 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs text-right z-20 pointer-events-none">
+            <div className="font-medium">{bars[bars.length - 1]?.close?.toFixed(4)}</div>
+            <div className={bars[bars.length - 1]?.close >= bars[bars.length - 2]?.close ? 'text-green-500' : 'text-red-500'}>
+              {bars[bars.length - 1]?.close >= bars[bars.length - 2]?.close ? '+' : ''}
+              {(bars[bars.length - 1]?.close - bars[bars.length - 2]?.close)?.toFixed(4)}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Last price info */}
-      {bars.length > 0 && (
-        <div className="absolute top-4 right-4 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs text-right z-20 pointer-events-none">
-          <div className="font-medium">{bars[bars.length - 1]?.close?.toFixed(4)}</div>
-          <div className={bars[bars.length - 1]?.close >= bars[bars.length - 2]?.close ? 'text-green-500' : 'text-red-500'}>
-            {bars[bars.length - 1]?.close >= bars[bars.length - 2]?.close ? '+' : ''}
-            {(bars[bars.length - 1]?.close - bars[bars.length - 2]?.close)?.toFixed(4)}
-          </div>
+      {/* Order Flow Panes */}
+      {renderOrderFlowPanes()}
+
+      {/* Order Flow Loading Overlay */}
+      {orderFlowLoading && orderFlowConfig?.enabled && orderFlowConfig?.type !== 'none' && (
+        <div className="flex items-center justify-center border-t bg-muted/20" style={{ height: '40px' }}>
+          <div className="text-xs text-muted-foreground">Loading order flow data...</div>
         </div>
       )}
     </div>
