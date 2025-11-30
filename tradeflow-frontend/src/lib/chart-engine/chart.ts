@@ -109,6 +109,10 @@ export class TradingChart {
           width,
           height,
         });
+        // Ensure data is visible after resize
+        requestAnimationFrame(() => {
+          this.chart?.timeScale().fitContent();
+        });
       }
     });
 
