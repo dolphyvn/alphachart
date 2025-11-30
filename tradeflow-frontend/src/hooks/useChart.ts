@@ -87,6 +87,12 @@ export function useChart(options: UseChartOptions) {
     chartRef.current.fitContent();
   };
 
+  // Update single candle
+  const updateCandle = (bar: Bar) => {
+    if (!chartRef.current || !isReady) return;
+    chartRef.current.updateCandle(bar);
+  };
+
   return {
     containerRef,
     isReady,
@@ -96,5 +102,6 @@ export function useChart(options: UseChartOptions) {
     updateChartType,
     updateTheme,
     fitContent,
+    updateCandle,
   };
 }

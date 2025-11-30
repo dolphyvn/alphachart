@@ -36,15 +36,41 @@ export function TradingChart({
     updateChartType,
     updateTheme,
     fitContent,
+    updateCandle,
   } = useChart({ symbol, timeframe, theme, chartType, width, height });
+
+  // Track state to differentiate between initial load and updates
+  const prevSymbolRef = React.useRef(symbol);
+  const prevTimeframeRef = React.useRef(timeframe);
+  const isLoadedRef = React.useRef(false);
+
+  // Reset loaded state on symbol/timeframe change
+  useEffect(() => {
+    if (symbol !== prevSymbolRef.current || timeframe !== prevTimeframeRef.current) {
+      isLoadedRef.current = false;
+      prevSymbolRef.current = symbol;
+      prevTimeframeRef.current = timeframe;
+    }
+  }, [symbol, timeframe]);
 
   // Update chart data when bars change
   useEffect(() => {
-    if (bars.length > 0 && isReady) {
+    if (!isReady || bars.length === 0) return;
+
+    if (!isLoadedRef.current) {
+      // Initial load: set full data and fit content
       updateData(bars);
-      setTimeout(() => fitContent(), 100); // Small delay to ensure rendering
+      setTimeout(() => fitContent(), 100);
+      isLoadedRef.current = true;
+    } else {
+      // Real-time update: just update the last candle
+      // This avoids resetting the view/zoom and is much more efficient
+      const lastBar = bars[bars.length - 1];
+      if (lastBar) {
+        updateCandle(lastBar);
+      }
     }
-  }, [bars, isReady]);
+  }, [bars, isReady, updateData, updateCandle, fitContent]);
 
   // Update chart type
   useEffect(() => {

@@ -166,6 +166,19 @@ export class TradingChart {
     candlestickSeries.setData(chartData);
   }
 
+  updateCandle(bar: Bar) {
+    const candlestickSeries = this.series.get('candlestick') as ISeriesApi<'Candlestick'>;
+    if (!candlestickSeries) return;
+
+    candlestickSeries.update({
+      time: this.convertTime(bar.time),
+      open: bar.open,
+      high: bar.high,
+      low: bar.low,
+      close: bar.close,
+    });
+  }
+
   addIndicator(indicator: Indicator, data: number[]) {
     if (!this.chart) return;
 
