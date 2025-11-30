@@ -180,47 +180,51 @@ async def receive_market_data_debug(
             number_of_trades = raw_data.get('number_of_trades', 0)
             open_interest = raw_data.get('open_interest')
 
-    logger.info(f"Processing bar: {symbol} @ {timestamp} ({timeframe}) O:{open_price} H:{high_price} L:{low_price} C:{close_price} V:{volume}")
+        logger.info(f"Processing bar: {symbol} @ {timestamp} ({timeframe}) O:{open_price} H:{high_price} L:{low_price} C:{close_price} V:{volume}")
 
-    # Store in TimescaleDB
-    await service.store_bar(
-        symbol=symbol,
-        timeframe=timeframe,
-        timestamp=timestamp,
-        open=open_price,
-        high=high_price,
-        low=low_price,
-        close=close_price,
-        volume=volume,
-        bid_volume=bid_volume,
-        ask_volume=ask_volume,
-        number_of_trades=number_of_trades,
-        open_interest=open_interest
-    )
+        # Store in TimescaleDB
+        await service.store_bar(
+            symbol=symbol,
+            timeframe=timeframe,
+            timestamp=timestamp,
+            open=open_price,
+            high=high_price,
+            low=low_price,
+            close=close_price,
+            volume=volume,
+            bid_volume=bid_volume,
+            ask_volume=ask_volume,
+            number_of_trades=number_of_trades,
+            open_interest=open_interest
+        )
 
-    # Schedule background tasks
-    background_tasks.add_task(
-        service.aggregate_to_higher_timeframes,
-        symbol, timeframe, timestamp
-    )
+        # Schedule background tasks
+        background_tasks.add_task(
+            service.aggregate_to_higher_timeframes,
+            symbol, timeframe, timestamp
+        )
 
-    background_tasks.add_task(
-        service.update_volume_profile,
-        symbol, timestamp, close_price, volume,
-        bid_volume, ask_volume
-    )
+        background_tasks.add_task(
+            service.update_volume_profile,
+            symbol, timestamp, close_price, volume,
+            bid_volume, ask_volume
+        )
 
-    background_tasks.add_task(
-        service.broadcast_tick,
-        symbol, raw_data
-    )
+        background_tasks.add_task(
+            service.broadcast_tick,
+            symbol, raw_data
+        )
 
-    return {
-        "status": "success",
-        "symbol": symbol,
-        "timeframe": timeframe,
-        "timestamp": timestamp.isoformat()
-    }
+        return {
+            "status": "success",
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "timestamp": timestamp.isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing Sierra Chart data: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.post("/batch")
 @router.post("/batch/")

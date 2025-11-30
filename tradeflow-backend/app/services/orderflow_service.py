@@ -36,6 +36,7 @@ class OrderFlowService:
         # Delta = Ask Volume - Bid Volume
 
         try:
+            logger.info(f"OrderFlowService.get_cvd: Fetching data for symbol={symbol}, timeframe={timeframe}, limit={limit}")
             query = """
                 SELECT time, close, bid_volume, ask_volume, volume
                 FROM market_data
@@ -45,10 +46,14 @@ class OrderFlowService:
             """
 
             rows = await timescale_manager.fetch(query, symbol, timeframe, limit)
+            logger.info(f"OrderFlowService.get_cvd: Found {len(rows) if rows else 0} rows in database")
 
             if not rows:
                 # Generate sample data if no real data available
-                return self._generate_sample_cvd_data(symbol, timeframe, limit)
+                logger.info(f"OrderFlowService.get_cvd: No rows found, generating sample data")
+                sample_data = self._generate_sample_cvd_data(symbol, timeframe, limit)
+                logger.info(f"OrderFlowService.get_cvd: Generated {len(sample_data)} sample data items")
+                return sample_data
 
             # Process in chronological order
             rows.reverse()

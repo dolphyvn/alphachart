@@ -27,12 +27,16 @@ export function useOrderFlow({
     queryFn: async () => {
       if (type === 'none') return null;
 
+      console.log('Fetching order flow data for:', { symbol, timeframe, type });
+
       try {
         // Fetch order flow data based on type
         let response;
         switch (type) {
           case 'cvd':
+            console.log('Making CVD API call...');
             response = await apiClient.getCumulativeDelta(symbol, timeframe, 500);
+            console.log('CVD API response:', response);
             break;
           case 'volume-profile':
             response = await apiClient.getVolumeProfile(symbol,
@@ -50,19 +54,38 @@ export function useOrderFlow({
             return null;
         }
 
+        console.log('Order flow response structure:', {
+          success: response.success,
+          dataType: typeof response.data,
+          dataLength: Array.isArray(response.data) ? response.data.length : 'not array',
+          data: response.data
+        });
+
         if (response.success && response.data) {
+          console.log('Returning order flow data with length:', Array.isArray(response.data) ? response.data.length : 'not array');
+
+          // The backend returns the array directly, but frontend expects { cvd: [] }
+          // Transform the response to match expected OrderFlowData structure
+          if (type === 'cvd') {
+            return { cvd: response.data };
+          }
+
           return response.data;
         }
         throw new Error(response.error || 'Failed to fetch order flow data');
       } catch (error) {
         console.warn('Order flow API fetch failed:', error);
+        // Return empty structure instead of null to prevent re-renders
+        if (type === 'cvd') {
+          return { cvd: [] };
+        }
         return null;
       }
     },
     enabled: enabled && !!symbol && !!timeframe && type !== 'none',
-    refetchInterval,
-    staleTime: 30000, // 30 seconds
-    retry: 2,
+    refetchInterval: false, // Disable auto-refetch for debugging
+    staleTime: 0, // Disable cache for debugging
+    retry: 1,
   });
 
   // WebSocket connection for real-time order flow updates

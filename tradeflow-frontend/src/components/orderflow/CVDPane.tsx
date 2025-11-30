@@ -33,11 +33,13 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
     }
   }, [data]);
 
+  // Chart creation and destruction - only create once per component mount
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Always create chart, even if no data initially
-    console.log('Creating CVD chart with data length:', data.length);
+    console.log('Creating CVD chart (first time)...');
+    console.log('Container dimensions:', { width, height });
+    console.log('Container element:', containerRef.current);
 
     // Initialize chart
     const chart = createChart(containerRef.current, {
@@ -83,6 +85,34 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
     });
 
     chartRef.current = chart;
+    console.log('CVD chart created successfully');
+
+    return () => {
+      console.log('Disposing CVD chart...');
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
+      cumulativeSeriesRef.current = null;
+      deltaSeriesRef.current = null;
+    };
+  }, []); // Empty dependency array - only create on mount
+
+  // Series management when config changes
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    const chart = chartRef.current;
+
+    // Remove existing series
+    if (cumulativeSeriesRef.current) {
+      chart.removeSeries(cumulativeSeriesRef.current);
+      cumulativeSeriesRef.current = null;
+    }
+    if (deltaSeriesRef.current) {
+      chart.removeSeries(deltaSeriesRef.current);
+      deltaSeriesRef.current = null;
+    }
 
     // Add cumulative delta series (line chart)
     if (config.showCumulative) {
@@ -96,14 +126,6 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
       });
 
       cumulativeSeriesRef.current = cumulativeSeries;
-
-      // Prepare cumulative delta data
-      const cumulativeData = data.map((datum) => ({
-        time: convertTime(datum.time),
-        value: datum.cumulativeDelta,
-      }));
-
-      cumulativeSeries.setData(cumulativeData);
     }
 
     // Add delta series (histogram)
@@ -120,47 +142,73 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
       });
 
       deltaSeriesRef.current = deltaSeries;
-
-      // Prepare delta data with color coding
-      const deltaData = data.map((datum) => ({
-        time: convertTime(datum.time),
-        value: datum.delta,
-        color: datum.delta >= 0 ? config.colorPositive : config.colorNegative,
-      }));
-
-      deltaSeries.setData(deltaData);
     }
 
-    // Fit content to show all data
-    setTimeout(() => {
-      chart.timeScale().fitContent();
-    }, 100);
+    // Update left price scale visibility
+    chart.priceScale('left').applyOptions({
+      visible: config.showDelta,
+    });
 
-    return () => {
-      chart.remove();
-      chartRef.current = null;
-    };
-  }, [data, config, width, height, theme]);
+  }, [config]);
 
   // Update chart when data changes
   useEffect(() => {
     if (!chartRef.current || !data.length) return;
 
-    if (config.showCumulative && cumulativeSeriesRef.current) {
-      const cumulativeData = data.map((datum) => ({
-        time: convertTime(datum.time),
-        value: datum.cumulativeDelta,
-      }));
-      cumulativeSeriesRef.current.setData(cumulativeData);
-    }
+    console.log('Updating CVD chart with data length:', data.length);
+    console.log('Chart config:', { showCumulative: config.showCumulative, showDelta: config.showDelta });
+    console.log('Series refs:', {
+      cumulative: !!cumulativeSeriesRef.current,
+      delta: !!deltaSeriesRef.current
+    });
 
-    if (config.showDelta && deltaSeriesRef.current) {
-      const deltaData = data.map((datum) => ({
-        time: convertTime(datum.time),
-        value: datum.delta,
-        color: datum.delta >= 0 ? config.colorPositive : config.colorNegative,
-      }));
-      deltaSeriesRef.current.setData(deltaData);
+    try {
+      if (config.showCumulative && cumulativeSeriesRef.current) {
+        const cumulativeData = data.map((datum) => {
+          const time = convertTime(datum.time);
+          const value = datum.cumulativeDelta || 0; // Handle null/undefined values
+          return { time, value };
+        }).filter(item => !isNaN(item.value)); // Filter out invalid values
+
+        if (cumulativeData.length > 0) {
+          console.log('Sample cumulative data:', cumulativeData.slice(0, 3));
+          console.log('First cumulative data point details:', {
+            originalTime: data[0].time,
+            convertedTime: cumulativeData[0].time,
+            value: cumulativeData[0].value,
+            timeType: typeof cumulativeData[0].time,
+            valueValid: !isNaN(cumulativeData[0].value)
+          });
+          cumulativeSeriesRef.current.setData(cumulativeData);
+          console.log('Updated cumulative series with', cumulativeData.length, 'points');
+        }
+      }
+
+      if (config.showDelta && deltaSeriesRef.current) {
+        const deltaData = data.map((datum) => {
+          const time = convertTime(datum.time);
+          const value = datum.delta || 0; // Handle null/undefined values
+          const color = datum.delta >= 0 ? config.colorPositive : config.colorNegative;
+          return { time, value, color };
+        }).filter(item => !isNaN(item.value)); // Filter out invalid values
+
+        if (deltaData.length > 0) {
+          console.log('Sample delta data:', deltaData.slice(0, 3));
+          deltaSeriesRef.current.setData(deltaData);
+          console.log('Updated delta series with', deltaData.length, 'points');
+        }
+      }
+
+      // Fit content to show all data after updating
+      setTimeout(() => {
+        if (chartRef.current) {
+          console.log('Fitting chart content...');
+          chartRef.current.timeScale().fitContent();
+        }
+      }, 100);
+
+    } catch (error) {
+      console.error('Error updating CVD chart data:', error);
     }
   }, [data, config]);
 

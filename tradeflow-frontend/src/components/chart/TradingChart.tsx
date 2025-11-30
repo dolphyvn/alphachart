@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useChart } from '@/hooks/useChart';
 import { useMarketData } from '@/hooks/useMarketData';
 import { Bar, Indicator, ChartType } from '@/types';
@@ -77,6 +77,7 @@ export function TradingChart({
   const prevSymbolRef = React.useRef(symbol);
   const prevTimeframeRef = React.useRef(timeframe);
   const isLoadedRef = React.useRef(false);
+  const isSettingTooltipRef = React.useRef(false); // Prevent tooltip updates during data load
 
   // Reset loaded state on symbol/timeframe change
   useEffect(() => {
@@ -101,7 +102,12 @@ export function TradingChart({
       // This avoids resetting the view/zoom and is much more efficient
       const lastBar = bars[bars.length - 1];
       if (lastBar) {
+        // Delay tooltip updates briefly after candle updates to prevent loops
+        isSettingTooltipRef.current = true;
         updateCandle(lastBar);
+        setTimeout(() => {
+          isSettingTooltipRef.current = false;
+        }, 10);
       }
     }
   }, [bars, isReady, updateData, updateCandle, fitContent]);
@@ -121,32 +127,57 @@ export function TradingChart({
   }, [theme, isReady]);
 
   // Setup crosshair move callback for tooltip
+  const handleCrosshairMove = useCallback((bar: Bar | null, x: number, y: number) => {
+    // Skip tooltip updates during initial data load to prevent infinite loops
+    if (!isLoadedRef.current || isSettingTooltipRef.current) {
+      return;
+    }
+
+    // Debounce rapid updates by only setting state when values actually change
+    setTooltipState(prev => {
+      // Check if the bar or position actually changed
+      if (
+        prev.bar?.timestamp === bar?.timestamp &&
+        prev.x === x &&
+        prev.y === y &&
+        prev.visible === !!bar
+      ) {
+        return prev; // No change, return previous state
+      }
+
+      if (bar) {
+        return {
+          bar,
+          visible: true,
+          x,
+          y,
+        };
+      } else {
+        return {
+          ...prev,
+          visible: false,
+        };
+      }
+    });
+  }, []); // Remove containerRef dependency since we don't use it anymore
+
   useEffect(() => {
     if (!isReady) return;
 
-    const handleCrosshairMove = (bar: Bar | null, x: number, y: number) => {
-      if (containerRef.current && bar) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const relativeX = x;
-        const relativeY = y;
-
-        setTooltipState({
-          bar,
-          visible: true,
-          x: relativeX,
-          y: relativeY,
-        });
-      } else {
-        setTooltipState(prev => ({ ...prev, visible: false }));
-      }
-    };
-
     setCrosshairMoveCallback(handleCrosshairMove);
-  }, [isReady, containerRef, setCrosshairMoveCallback]);
+  }, [isReady, setCrosshairMoveCallback, handleCrosshairMove]);
 
-  // Render order flow panes
-  const renderOrderFlowPanes = () => {
+  // Render order flow panes - memoized to prevent infinite re-renders
+  const renderOrderFlowPanes = React.useCallback(() => {
+    console.log('renderOrderFlowPanes called:', {
+      enabled: orderFlowConfig?.enabled,
+      type: orderFlowConfig?.type,
+      hasData: !!orderFlowData,
+      dataLength: Array.isArray((orderFlowData as any)?.cvd) ? (orderFlowData as any).cvd.length : 0
+    });
+
     if (!orderFlowConfig?.enabled || orderFlowConfig?.type === 'none') {
+      console.log('Returning null - order flow disabled or type none');
       return null;
     }
 
@@ -155,8 +186,9 @@ export function TradingChart({
 
     switch (orderFlowConfig.type) {
       case 'cvd':
+        console.log('Rendering CVD pane');
         return (
-          <div className="border-t" style={{ height: `${paneHeight}px` }}>
+          <div className="border-t" style={{ height: `${paneHeight}px` }} key="cvd-pane">
             <CVDPane
               data={(orderFlowData as any)?.cvd || []}
               config={orderFlowConfig.cvdSettings}
@@ -198,7 +230,7 @@ export function TradingChart({
       default:
         return null;
     }
-  };
+  }, [orderFlowConfig, orderFlowData, width, theme, marketData, bars, currentPrice]);
 
   // Manage indicators
   useEffect(() => {
