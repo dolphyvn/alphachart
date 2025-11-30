@@ -40,7 +40,7 @@ export function Header({ className = '' }: HeaderProps) {
     : (availableSymbols?.success && availableSymbols.data ? (Array.isArray(availableSymbols.data) ? availableSymbols.data.map((symbol: string) => ({
       symbol,
       name: symbol, // Backend doesn't provide names yet
-      asset_type: 'UNKNOWN',
+      asset_type: 'forex',
       exchange: 'UNKNOWN'
     })) : []) : DEFAULT_SYMBOLS);
 
@@ -150,8 +150,8 @@ export function Header({ className = '' }: HeaderProps) {
                           toggleWatchlist(symbol);
                         }}
                         className={`p-1 rounded transition-colors ${isInWatchlist(symbol.symbol)
-                            ? 'text-primary bg-primary/10'
-                            : 'text-muted-foreground hover:text-foreground'
+                          ? 'text-primary bg-primary/10'
+                          : 'text-muted-foreground hover:text-foreground'
                           }`}
                       >
                         {isInWatchlist(symbol.symbol) ? '★' : '☆'}
@@ -179,8 +179,8 @@ export function Header({ className = '' }: HeaderProps) {
               key={timeframe.value}
               onClick={() => setCurrentTimeframe(timeframe)}
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentTimeframe.value === timeframe.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
             >
               {timeframe.label}
@@ -197,8 +197,8 @@ export function Header({ className = '' }: HeaderProps) {
                 key={type.id}
                 onClick={() => setChartType(type)}
                 className={`px-2 py-1 rounded text-sm transition-colors ${chartType.id === type.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 title={type.label}
               >
