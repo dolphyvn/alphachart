@@ -8,6 +8,7 @@ import { CandleTooltip } from './CandleTooltip';
 import { CVDPane } from '../orderflow/CVDPane';
 import { VolumeProfilePane } from '../orderflow/VolumeProfilePane';
 import { FootprintChart } from '../orderflow/FootprintChart';
+import { OrderFlowControls } from '../orderflow/OrderFlowControls';
 import { useOrderFlow } from '@/hooks/useOrderFlow';
 
 interface TradingChartProps {
@@ -46,6 +47,7 @@ export function TradingChart({
     enabled: orderFlowConfig?.enabled || false,
     type: orderFlowConfig?.type || 'none'
   });
+  const [showOrderFlowControls, setShowOrderFlowControls] = useState(false);
   const [tooltipState, setTooltipState] = useState<{
     bar: Bar | null;
     visible: boolean;
@@ -253,10 +255,69 @@ export function TradingChart({
         )}
 
         {/* Chart info overlay */}
-        <div className="absolute top-4 left-4 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs z-20 pointer-events-none">
+        <div className="absolute top-4 left-4 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs z-20">
           <div className="font-medium">{symbol}</div>
           <div className="text-muted-foreground">{timeframe}</div>
         </div>
+
+        {/* Order Flow Controls Button */}
+        <div className="absolute top-4 left-32 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs z-20">
+          <button
+            onClick={() => setShowOrderFlowControls(!showOrderFlowControls)}
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+          >
+            <span>Order Flow</span>
+            {orderFlowConfig?.enabled && (
+              <span className="text-xs opacity-75">
+                {orderFlowConfig.type === 'cvd' ? 'CVD' :
+                 orderFlowConfig.type === 'volume-profile' ? 'VP' :
+                 orderFlowConfig.type === 'footprint' ? 'FP' : ''}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Order Flow Controls Panel */}
+        {showOrderFlowControls && onOrderFlowConfigChange && (
+          <div className="absolute top-12 left-4 bg-background/95 backdrop-blur border rounded-lg shadow-lg p-4 z-30 w-80">
+            <OrderFlowControls
+              config={orderFlowConfig || {
+                enabled: false,
+                type: 'none',
+                cvdSettings: {
+                  colorPositive: '#22c55e',
+                  colorNegative: '#ef4444',
+                  lineWidth: 2,
+                  showCumulative: true,
+                  showDelta: true,
+                },
+                volumeProfileSettings: {
+                  areaStyle: 'gradient',
+                  colorScheme: 'bidask',
+                  showPOC: true,
+                  showVA: true,
+                  valueAreaPercent: 70,
+                },
+                footprintSettings: {
+                  displayMode: 'split',
+                  colorScheme: 'bidask',
+                  showNumbers: true,
+                  showTotal: true,
+                  aggregateTrades: true,
+                },
+              }}
+              onConfigChange={onOrderFlowConfigChange}
+              symbol={symbol}
+              timeframe={timeframe}
+            />
+            <button
+              onClick={() => setShowOrderFlowControls(false)}
+              className="absolute top-2 right-2 p-1 rounded hover:bg-muted"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* Last price info */}
         {bars.length > 0 && (

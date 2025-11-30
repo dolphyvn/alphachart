@@ -24,8 +24,20 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
   const cumulativeSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const deltaSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
 
+  // Debug: Log received data
   useEffect(() => {
-    if (!containerRef.current || !data.length) return;
+    console.log('CVD Pane received data:', data.length, 'items');
+    console.log('CVD config:', config);
+    if (data.length > 0) {
+      console.log('First CVD data point:', data[0]);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Always create chart, even if no data initially
+    console.log('Creating CVD chart with data length:', data.length);
 
     // Initialize chart
     const chart = createChart(containerRef.current, {
