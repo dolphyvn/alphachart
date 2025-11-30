@@ -71,7 +71,10 @@ class ApiClient {
         data: response.data.symbols
       };
     }
-    return response;
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch symbols'
+    };
   }
 
   // Indicators
