@@ -76,28 +76,6 @@ export function TradingChart({
     });
   }, [indicators, bars, isReady]);
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full text-red-500">
-        <div className="text-center">
-          <p className="text-lg font-semibold">Error loading chart data</p>
-          <p className="text-sm opacity-75">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading && bars.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mx-auto mb-2"></div>
-          <p className="text-sm">Loading market data...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="relative w-full h-full">
       <div
@@ -106,15 +84,35 @@ export function TradingChart({
         style={{ width, height }}
       />
 
+      {/* Loading Overlay */}
+      {isLoading && bars.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur z-10">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+            <p className="text-sm text-muted-foreground">Loading market data...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error Overlay */}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur z-10">
+          <div className="text-center text-destructive">
+            <p className="text-lg font-semibold">Error loading chart data</p>
+            <p className="text-sm opacity-75">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Chart info overlay */}
-      <div className="absolute top-4 left-4 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs">
+      <div className="absolute top-4 left-4 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs z-20 pointer-events-none">
         <div className="font-medium">{symbol}</div>
         <div className="text-muted-foreground">{timeframe}</div>
       </div>
 
       {/* Last price info */}
       {bars.length > 0 && (
-        <div className="absolute top-4 right-4 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs text-right">
+        <div className="absolute top-4 right-4 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs text-right z-20 pointer-events-none">
           <div className="font-medium">{bars[bars.length - 1]?.close?.toFixed(4)}</div>
           <div className={bars[bars.length - 1]?.close >= bars[bars.length - 2]?.close ? 'text-green-500' : 'text-red-500'}>
             {bars[bars.length - 1]?.close >= bars[bars.length - 2]?.close ? '+' : ''}
