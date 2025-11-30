@@ -24,14 +24,14 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
   const cumulativeSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const deltaSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
 
-  // Debug: Log received data
+  // Debug: Log received data (only when length changes)
   useEffect(() => {
-    console.log('CVD Pane received data:', data.length, 'items');
-    console.log('CVD config:', config);
     if (data.length > 0) {
+      console.log('CVD Pane received data:', data.length, 'items');
+      console.log('CVD config:', config);
       console.log('First CVD data point:', data[0]);
     }
-  }, [data]);
+  }, [data.length]); // Only trigger when data length changes
 
   // Chart creation and destruction - only create once per component mount
   useEffect(() => {
@@ -155,13 +155,6 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
   useEffect(() => {
     if (!chartRef.current || !data.length) return;
 
-    console.log('Updating CVD chart with data length:', data.length);
-    console.log('Chart config:', { showCumulative: config.showCumulative, showDelta: config.showDelta });
-    console.log('Series refs:', {
-      cumulative: !!cumulativeSeriesRef.current,
-      delta: !!deltaSeriesRef.current
-    });
-
     try {
       if (config.showCumulative && cumulativeSeriesRef.current) {
         const cumulativeData = data.map((datum) => {
@@ -171,14 +164,6 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
         }).filter(item => !isNaN(item.value)); // Filter out invalid values
 
         if (cumulativeData.length > 0) {
-          console.log('Sample cumulative data:', cumulativeData.slice(0, 3));
-          console.log('First cumulative data point details:', {
-            originalTime: data[0].time,
-            convertedTime: cumulativeData[0].time,
-            value: cumulativeData[0].value,
-            timeType: typeof cumulativeData[0].time,
-            valueValid: !isNaN(cumulativeData[0].value)
-          });
           cumulativeSeriesRef.current.setData(cumulativeData);
           console.log('Updated cumulative series with', cumulativeData.length, 'points');
         }
@@ -193,13 +178,12 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
         }).filter(item => !isNaN(item.value)); // Filter out invalid values
 
         if (deltaData.length > 0) {
-          console.log('Sample delta data:', deltaData.slice(0, 3));
           deltaSeriesRef.current.setData(deltaData);
           console.log('Updated delta series with', deltaData.length, 'points');
         }
       }
 
-      // Fit content to show all data after updating
+      // Sync time scale with main chart and fit content
       setTimeout(() => {
         if (chartRef.current) {
           console.log('Fitting chart content...');
@@ -250,8 +234,8 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
   const stats = getStatistics();
 
   return (
-    <div className="relative w-full h-full">
-      <div ref={containerRef} className="w-full h-full" />
+    <div className="relative w-full h-full overflow-hidden">
+      <div ref={containerRef} className="w-full h-full" style={{ width: '100%', height: '100%' }} />
 
       {/* Statistics overlay */}
       {stats && (

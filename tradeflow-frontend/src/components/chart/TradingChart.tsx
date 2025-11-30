@@ -47,7 +47,8 @@ export function TradingChart({
     enabled: orderFlowConfig?.enabled || false,
     type: orderFlowConfig?.type || 'none'
   });
-  const [showOrderFlowControls, setShowOrderFlowControls] = useState(false);
+
+    const [showOrderFlowControls, setShowOrderFlowControls] = useState(false);
   const [tooltipState, setTooltipState] = useState<{
     bar: Bar | null;
     visible: boolean;
@@ -167,71 +168,7 @@ export function TradingChart({
     setCrosshairMoveCallback(handleCrosshairMove);
   }, [isReady, setCrosshairMoveCallback, handleCrosshairMove]);
 
-  // Render order flow panes - memoized to prevent infinite re-renders
-  const renderOrderFlowPanes = React.useCallback(() => {
-    console.log('renderOrderFlowPanes called:', {
-      enabled: orderFlowConfig?.enabled,
-      type: orderFlowConfig?.type,
-      hasData: !!orderFlowData,
-      dataLength: Array.isArray((orderFlowData as any)?.cvd) ? (orderFlowData as any).cvd.length : 0
-    });
-
-    if (!orderFlowConfig?.enabled || orderFlowConfig?.type === 'none') {
-      console.log('Returning null - order flow disabled or type none');
-      return null;
-    }
-
-    const paneHeight = 150; // Height for each order flow pane
-    const actualBars = marketData || bars;
-
-    switch (orderFlowConfig.type) {
-      case 'cvd':
-        console.log('Rendering CVD pane');
-        return (
-          <div className="border-t" style={{ height: `${paneHeight}px` }} key="cvd-pane">
-            <CVDPane
-              data={(orderFlowData as any)?.cvd || []}
-              config={orderFlowConfig.cvdSettings}
-              width={width || 800}
-              height={paneHeight}
-              theme={theme}
-            />
-          </div>
-        );
-
-      case 'volume-profile':
-        return (
-          <div className="border-t" style={{ height: `${paneHeight}px` }}>
-            <VolumeProfilePane
-              data={(orderFlowData as any)?.volumeProfile || []}
-              config={orderFlowConfig.volumeProfileSettings}
-              width={width || 800}
-              height={paneHeight}
-              theme={theme}
-              currentPrice={currentPrice || (actualBars.length > 0 ? actualBars[actualBars.length - 1].close : undefined)}
-            />
-          </div>
-        );
-
-      case 'footprint':
-        return (
-          <div className="border-t" style={{ height: `${paneHeight * 2}px` }}>
-            <FootprintChart
-              data={(orderFlowData as any)?.footprint || []}
-              config={orderFlowConfig.footprintSettings}
-              width={width || 800}
-              height={paneHeight * 2}
-              theme={theme}
-              currentPrice={currentPrice || (actualBars.length > 0 ? actualBars[actualBars.length - 1].close : undefined)}
-            />
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  }, [orderFlowConfig, orderFlowData, width, theme, marketData, bars, currentPrice]);
-
+  
   // Manage indicators
   useEffect(() => {
     if (!isReady) return;
@@ -364,7 +301,17 @@ export function TradingChart({
       </div>
 
       {/* Order Flow Panes */}
-      {renderOrderFlowPanes()}
+      {orderFlowConfig?.enabled && orderFlowConfig?.type !== 'none' && (
+        <div className="border-t" style={{ height: '150px' }} key={`cvd-pane-${orderFlowConfig.enabled}-${orderFlowConfig.type}`}>
+          <CVDPane
+            data={(orderFlowData as any)?.cvd || []}
+            config={orderFlowConfig.cvdSettings}
+            width={width || 800}
+            height={150}
+            theme={theme}
+          />
+        </div>
+      )}
 
       {/* Order Flow Loading Overlay */}
       {orderFlowLoading && orderFlowConfig?.enabled && orderFlowConfig?.type !== 'none' && (

@@ -145,10 +145,22 @@ export function MainLayout() {
             Indicators
           </button>
           <button
-            onClick={() => updateOrderFlowConfig({
-              enabled: !layout.orderFlow.enabled,
-              type: !layout.orderFlow.enabled ? 'cvd' : 'none'
-            })}
+            onClick={() => {
+              console.log('=== ORDER FLOW BUTTON CLICKED ===');
+              console.log('Current layout.orderFlow:', layout.orderFlow);
+              const newConfig = {
+                enabled: !layout.orderFlow.enabled,
+                type: !layout.orderFlow.enabled ? 'cvd' : 'none'
+              };
+              console.log('About to set new config:', newConfig);
+              updateOrderFlowConfig(newConfig);
+              console.log('updateOrderFlowConfig called');
+
+              // Force a re-render by updating a dummy state if needed
+              setTimeout(() => {
+                console.log('Order Flow config after timeout:', layout.orderFlow);
+              }, 100);
+            }}
             className={`px-2 py-1 text-xs rounded transition-colors flex items-center gap-1 ${
               layout.orderFlow.enabled
                 ? 'bg-primary text-primary-foreground'
@@ -157,6 +169,9 @@ export function MainLayout() {
           >
             <BarChart3 className="h-3 w-3" />
             Order Flow
+            {layout.orderFlow.enabled && (
+              <span className="text-xs opacity-75">ON</span>
+            )}
           </button>
         </div>
 
