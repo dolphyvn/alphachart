@@ -519,7 +519,7 @@ SCSFExport scsf_TradeFlowProDataCollector(SCStudyInterfaceRef sc)
                 // Remove trailing slash to avoid double slash
                 SCString baseURL = Input_APIEndpoint.GetString();
                 if (baseURL.GetLength() > 0 && baseURL[baseURL.GetLength() - 1] == '/') {
-                    baseURL = baseURL.SubString(0, baseURL.GetLength() - 1);
+                    baseURL = baseURL.Left(baseURL.GetLength() - 1);
                 }
                 apiURL = baseURL + "/batch";
 
@@ -642,7 +642,7 @@ SCSFExport scsf_TradeFlowProDataCollector(SCStudyInterfaceRef sc)
                 // Remove trailing slash to avoid double slash
                 SCString baseURL = Input_APIEndpoint.GetString();
                 if (baseURL.GetLength() > 0 && baseURL[baseURL.GetLength() - 1] == '/') {
-                    baseURL = baseURL.SubString(0, baseURL.GetLength() - 1);
+                    baseURL = baseURL.Left(baseURL.GetLength() - 1);
                 }
                 apiURL = baseURL + "/batch";
 
