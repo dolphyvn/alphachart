@@ -18,6 +18,8 @@ interface OrderFlowPanelProps {
   width?: number;
   height?: number;
   marketData?: Bar[];
+  // Allow setting a fixed height override
+  fixedHeight?: number;
 }
 
 export function OrderFlowPanel({

@@ -226,29 +226,27 @@ export function MainLayout() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 flex overflow-hidden">
-          {/* Watchlist Sidebar */}
-          {showWatchlist && (
-            <div className="w-80 flex-shrink-0">
-              <Watchlist />
-            </div>
-          )}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Watchlist Sidebar */}
+        {showWatchlist && (
+          <div className="w-80 flex-shrink-0">
+            <Watchlist />
+          </div>
+        )}
 
-          {/* Chart Area */}
-          {renderCharts()}
+        {/* Chart Area */}
+        {renderCharts()}
 
-          {/* Indicators Panel */}
-          {showIndicators && (
-            <div className="w-80 flex-shrink-0">
-              <IndicatorsPanel />
-            </div>
-          )}
-        </div>
+        {/* Indicators Panel */}
+        {showIndicators && (
+          <div className="w-80 flex-shrink-0">
+            <IndicatorsPanel />
+          </div>
+        )}
 
-        {/* Order Flow Panel */}
+        {/* Order Flow Panel - Fixed Size Bottom Panel */}
         {layout.orderFlow.enabled && (
-          <div className="border-t">
+          <div className="w-full h-80 flex-shrink-0 border-t">
             <OrderFlowPanel
               symbol={currentSymbol.symbol}
               timeframe={currentTimeframe.value}
@@ -257,6 +255,7 @@ export function MainLayout() {
               currentPrice={bars.length > 0 ? bars[bars.length - 1].close : undefined}
               theme={theme}
               marketData={bars}
+              height={320} // Fixed height for order flow panel
             />
           </div>
         )}
