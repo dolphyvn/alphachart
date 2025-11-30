@@ -31,12 +31,31 @@ export function useMarketData({
         const response = await apiClient.getMarketData(symbol, timeframe, 500);
         if (response.success && response.data) {
           // Ensure bars have the correct structure for tooltip functionality
-          return response.data.map((bar: any) => ({
+          const normalizedBars = response.data.map((bar: any) => ({
             ...bar,
             bid_volume: bar.bid_volume || bar.BidVolume || 0,
             ask_volume: bar.ask_volume || bar.AskVolume || 0,
             number_of_trades: bar.number_of_trades || bar.NumberOfTrades || 0,
           }));
+
+          // Validate and sort bars by time
+          const validBars = normalizedBars.filter((bar: any) => {
+            if (!bar.time || !bar.close || typeof bar.close !== 'number') {
+              console.warn('Invalid bar data filtered out:', bar);
+              return false;
+            }
+            const barTime = new Date(bar.time);
+            return !isNaN(barTime.getTime());
+          });
+
+          // Sort by time (oldest first)
+          validBars.sort((a: any, b: any) => {
+            const timeA = new Date(a.time).getTime();
+            const timeB = new Date(b.time).getTime();
+            return timeA - timeB;
+          });
+
+          return validBars;
         }
         throw new Error(response.error || 'Failed to fetch data');
       } catch (error) {
@@ -84,11 +103,27 @@ export function useMarketData({
 
           const newBar = message.data || message;
 
-          if (newBar && newBar.close) {
+          // Validate the bar data before processing
+          if (newBar && typeof newBar.close === 'number' && !isNaN(newBar.close)) {
+            // Validate time field
+            if (!newBar.time) {
+              console.warn('WebSocket message missing time field:', newBar);
+              return;
+            }
+
+            // Check if time is valid
+            const barTime = new Date(newBar.time);
+            if (isNaN(barTime.getTime())) {
+              console.warn('WebSocket message has invalid time format:', newBar.time, newBar);
+              return;
+            }
+
             updateBar(newBar);
+          } else {
+            console.warn('WebSocket message invalid bar data:', message);
           }
         } catch (e) {
-          console.error('Error parsing WebSocket message:', e);
+          console.error('Error parsing WebSocket message:', e, event.data);
         }
       };
 
@@ -134,24 +169,43 @@ export function useMarketData({
       (oldData: Bar[] | undefined) => {
         if (!oldData) return [normalizedBar];
 
-        // Ensure newBar has a proper time format
-        const barTime = new Date(normalizedBar.time).getTime();
+        try {
+          // Ensure newBar has a proper time format
+          const barTime = new Date(normalizedBar.time).getTime();
 
-        // Find if we should update the last bar or add a new one
-        const lastBar = oldData[oldData.length - 1];
-        const lastBarTime = new Date(lastBar.time).getTime();
+          if (isNaN(barTime)) {
+            console.warn('Invalid bar time format:', normalizedBar.time);
+            return oldData;
+          }
 
-        if (barTime === lastBarTime) {
-          // Update existing bar (candle update)
-          const updatedData = [...oldData];
-          updatedData[updatedData.length - 1] = normalizedBar;
-          return updatedData;
-        } else if (barTime > lastBarTime) {
-          // Add new bar
-          return [...oldData, normalizedBar].slice(-500); // Keep last 500
+          // Find if we should update the last bar or add a new one
+          const lastBar = oldData[oldData.length - 1];
+          if (!lastBar) return [...oldData, normalizedBar];
+
+          const lastBarTime = new Date(lastBar.time).getTime();
+
+          if (isNaN(lastBarTime)) {
+            console.warn('Invalid last bar time format:', lastBar.time);
+            return [...oldData, normalizedBar];
+          }
+
+          if (barTime === lastBarTime) {
+            // Update existing bar (candle update)
+            const updatedData = [...oldData];
+            updatedData[updatedData.length - 1] = normalizedBar;
+            return updatedData;
+          } else if (barTime > lastBarTime) {
+            // Add new bar
+            return [...oldData, normalizedBar].slice(-500); // Keep last 500
+          } else {
+            // Ignore older data to prevent chart errors
+            console.warn('Ignoring older bar data:', new Date(normalizedBar.time).toISOString(), 'last:', new Date(lastBar.time).toISOString());
+            return oldData;
+          }
+        } catch (error) {
+          console.error('Error processing bar update:', error, normalizedBar);
+          return oldData;
         }
-
-        return oldData;
       }
     );
   };

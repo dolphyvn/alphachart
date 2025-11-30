@@ -258,13 +258,53 @@ export class TradingChart {
     const candlestickSeries = this.series.get('candlestick') as ISeriesApi<'Candlestick'>;
     if (!candlestickSeries) return;
 
-    candlestickSeries.update({
-      time: this.convertTime(bar.time),
-      open: bar.open,
-      high: bar.high,
-      low: bar.low,
-      close: bar.close,
-    });
+    try {
+      const timeValue = this.convertTime(bar.time);
+
+      // Ensure timeValue is a number for comparison
+      const timestamp = typeof timeValue === 'number' ? timeValue : this.convertTimeToNumber(bar.time);
+
+      // Check if this is newer than the last candle time
+      if (this.barData.length > 0) {
+        const lastBar = this.barData[this.barData.length - 1];
+        const lastTimestamp = this.convertTimeToNumber(lastBar.time);
+
+        // If this is the same time as the last candle, update it
+        // If it's newer, add it as a new candle
+        // If it's older, ignore it to prevent the "oldest data" error
+        if (timestamp < lastTimestamp) {
+          console.warn('Ignoring older candle data:', timestamp, 'last:', lastTimestamp);
+          return;
+        }
+      }
+
+      const updateData = {
+        time: timeValue,
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close,
+      };
+
+      candlestickSeries.update(updateData);
+
+      // Update bar data for tooltip
+      const existingBarIndex = this.barData.findIndex(b =>
+        this.convertTimeToNumber(b.time) === timestamp
+      );
+
+      if (existingBarIndex >= 0) {
+        this.barData[existingBarIndex] = bar;
+      } else if (timestamp >= this.convertTimeToNumber(this.barData[this.barData.length - 1]?.time || 0)) {
+        this.barData.push(bar);
+        // Keep only last 500 bars
+        if (this.barData.length > 500) {
+          this.barData = this.barData.slice(-500);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating candle:', error, bar);
+    }
   }
 
   addIndicator(indicator: Indicator, data: number[]) {
