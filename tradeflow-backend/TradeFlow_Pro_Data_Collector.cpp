@@ -116,29 +116,24 @@ SCString CreateTradeFlowBarJSON(SCStudyInterfaceRef sc, int Index)
         json += "\"open_interest\":null,";
     }
 
-    // Chart info (TradeFlow format)
+    // Chart info (Nested object to match Pydantic model)
+    json += "\"chart_info\":{";
+    
     json += "\"symbol\":\"";
     json += sc.Symbol.GetChars();
     json += "\",";
-    json += "\"timeframe\":\"";
 
-    // Convert seconds to TradeFlow format
-    int secondsPerBar = sc.SecondsPerBar;
-    if (secondsPerBar < 60)
-        json += SCString().Format("%ds", secondsPerBar);
-    else if (secondsPerBar < 3600)
-        json += SCString().Format("%dm", secondsPerBar / 60);
-    else if (secondsPerBar < 86400)
-        json += SCString().Format("%dh", secondsPerBar / 3600);
-    else
-        json += SCString().Format("%dD", secondsPerBar / 86400);
-
-    json += "\"";
-
-    // Data source metadata
-    json += ",\"source\":\"sierra_chart\"";
-    json += ",\"chart_number\":";
+    json += "\"chart_number\":";
     json += SCString().Format("%d", sc.ChartNumber);
+    json += ",";
+
+    json += "\"seconds_per_bar\":";
+    json += SCString().Format("%d", sc.SecondsPerBar);
+    
+    json += "}"; // End chart_info
+
+    // Data source metadata (Root level)
+    json += ",\"source\":\"sierra_chart\"";
     json += ",\"collected_at\":\"";
     json += sc.FormatDateTime(sc.CurrentSystemDateTime).GetChars();
     json += "\"";
