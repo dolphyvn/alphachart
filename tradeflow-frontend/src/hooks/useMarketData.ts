@@ -17,11 +17,11 @@ export function useMarketData({
   symbol,
   timeframe,
   enabled = true,
-  refetchInterval = 1000, // Refresh every second by default
+  refetchInterval = 1000, // Keep for fallback or other uses, though WS replaces polling
 }: UseMarketDataOptions) {
   const queryClient = useQueryClient();
-  const mockService = useRef(MockMarketDataService.getInstance());
-  const realtimeIntervalRef = useRef<(() => void) | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['market-data', symbol, timeframe],
@@ -32,53 +32,86 @@ export function useMarketData({
         if (response.success && response.data) {
           return response.data;
         }
+        throw new Error(response.error || 'Failed to fetch data');
       } catch (error) {
-        console.warn('API not available, using mock data:', error);
+        console.warn('API fetch failed:', error);
+        return []; // Return empty array instead of mock data on failure
       }
-
-      // Fallback to mock data
-      return mockService.current.generateHistoricalData(500);
     },
     enabled: enabled && !!symbol && !!timeframe,
-    refetchInterval: false, // We'll handle real-time updates ourselves
-    staleTime: timeframe.includes('s') ? 500 : 30000, // 0.5s for seconds, 30s for minutes+
+    refetchInterval: false, // We'll handle real-time updates via WebSocket
+    staleTime: Infinity, // Data is kept fresh by WebSocket updates
     retry: 1,
   });
 
-  // Set up real-time updates for second-based timeframes
+  // WebSocket Connection Logic
   useEffect(() => {
-    if (!timeframe.includes('s') || !symbol || !enabled) {
-      // Clean up any existing interval
-      if (realtimeIntervalRef.current) {
-        realtimeIntervalRef.current();
-        realtimeIntervalRef.current = null;
-      }
-      return;
-    }
+    if (!enabled || !symbol) return;
 
-    // Start real-time updates
-    const cleanup = mockService.current.startRealtimeUpdates((newBar) => {
-      queryClient.setQueryData(
-        ['market-data', symbol, timeframe],
-        (oldData: Bar[] | undefined) => {
-          if (!oldData) return [newBar];
+    const connectWebSocket = () => {
+      const wsUrl = apiClient.getWebSocketURL();
+      console.log('Connecting to WebSocket:', wsUrl);
 
-          // Remove the last bar if it's from the same second, then add the new bar
-          const filteredData = oldData.filter(bar => bar.time !== newBar.time);
-          return [...filteredData, newBar].slice(-500);
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('WebSocket Connected');
+        // Subscribe to symbol
+        ws.send(JSON.stringify({
+          action: 'subscribe',
+          symbols: [symbol]
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+
+          // Handle different message types
+          if (message.type === 'pong' || message.status === 'subscribed') return;
+
+          // Assuming message is a Bar object or contains bar data
+          // Adjust this based on actual backend message structure
+          // The backend broadcast_tick sends: { type: 'trade', symbol: ..., data: { ...bar } }
+          // Or if it sends raw bar data directly
+
+          const newBar = message.data || message;
+
+          if (newBar && newBar.close) {
+            updateBar(newBar);
+          }
+        } catch (e) {
+          console.error('Error parsing WebSocket message:', e);
         }
-      );
-    }, refetchInterval);
+      };
 
-    realtimeIntervalRef.current = cleanup;
+      ws.onclose = () => {
+        console.log('WebSocket Disconnected');
+        // Attempt reconnect after delay
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log('Attempting to reconnect...');
+          connectWebSocket();
+        }, 3000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket Error:', error);
+        ws.close();
+      };
+    };
+
+    connectWebSocket();
 
     return () => {
-      if (realtimeIntervalRef.current) {
-        realtimeIntervalRef.current();
-        realtimeIntervalRef.current = null;
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [symbol, timeframe, enabled, refetchInterval, queryClient]);
+  }, [symbol, enabled, queryClient]);
 
   // Function to update a single bar (for real-time updates)
   const updateBar = (newBar: Bar) => {
@@ -87,21 +120,24 @@ export function useMarketData({
       (oldData: Bar[] | undefined) => {
         if (!oldData) return [newBar];
 
-        // Find if the bar already exists
-        const existingIndex = oldData.findIndex(bar => bar.time === newBar.time);
+        // Ensure newBar has a proper time format
+        const barTime = new Date(newBar.time).getTime();
 
-        if (existingIndex >= 0) {
-          // Update existing bar
+        // Find if we should update the last bar or add a new one
+        const lastBar = oldData[oldData.length - 1];
+        const lastBarTime = new Date(lastBar.time).getTime();
+
+        if (barTime === lastBarTime) {
+          // Update existing bar (candle update)
           const updatedData = [...oldData];
-          updatedData[existingIndex] = newBar;
+          updatedData[updatedData.length - 1] = newBar;
           return updatedData;
-        } else {
-          // Add new bar and keep only the most recent ones
-          const updatedData = [newBar, ...oldData].slice(0, 500);
-          return updatedData.sort((a, b) =>
-            new Date(a.time).getTime() - new Date(b.time).getTime()
-          );
+        } else if (barTime > lastBarTime) {
+          // Add new bar
+          return [...oldData, newBar].slice(-500); // Keep last 500
         }
+
+        return oldData;
       }
     );
   };
