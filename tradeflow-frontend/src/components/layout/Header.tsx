@@ -36,13 +36,13 @@ export function Header({ className = '' }: HeaderProps) {
 
   // Convert string symbols to Symbol objects or use search results
   const symbolsToShow = searchQuery
-    ? (searchResults?.success ? searchResults.data : [])
-    : (availableSymbols?.success ? (Array.isArray(availableSymbols.data) ? availableSymbols.data.map((symbol: string) => ({
-        symbol,
-        name: symbol, // Backend doesn't provide names yet
-        asset_type: 'UNKNOWN',
-        exchange: 'UNKNOWN'
-      })) : []) : DEFAULT_SYMBOLS);
+    ? (searchResults?.success && searchResults.data ? searchResults.data : [])
+    : (availableSymbols?.success && availableSymbols.data ? (Array.isArray(availableSymbols.data) ? availableSymbols.data.map((symbol: string) => ({
+      symbol,
+      name: symbol, // Backend doesn't provide names yet
+      asset_type: 'UNKNOWN',
+      exchange: 'UNKNOWN'
+    })) : []) : DEFAULT_SYMBOLS);
 
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) {
@@ -149,11 +149,10 @@ export function Header({ className = '' }: HeaderProps) {
                           e.stopPropagation();
                           toggleWatchlist(symbol);
                         }}
-                        className={`p-1 rounded transition-colors ${
-                          isInWatchlist(symbol.symbol)
+                        className={`p-1 rounded transition-colors ${isInWatchlist(symbol.symbol)
                             ? 'text-primary bg-primary/10'
                             : 'text-muted-foreground hover:text-foreground'
-                        }`}
+                          }`}
                       >
                         {isInWatchlist(symbol.symbol) ? '★' : '☆'}
                       </button>
@@ -179,11 +178,10 @@ export function Header({ className = '' }: HeaderProps) {
             <button
               key={timeframe.value}
               onClick={() => setCurrentTimeframe(timeframe)}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                currentTimeframe.value === timeframe.value
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentTimeframe.value === timeframe.value
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
+                }`}
             >
               {timeframe.label}
             </button>
@@ -198,11 +196,10 @@ export function Header({ className = '' }: HeaderProps) {
               <button
                 key={type.id}
                 onClick={() => setChartType(type)}
-                className={`px-2 py-1 rounded text-sm transition-colors ${
-                  chartType.id === type.id
+                className={`px-2 py-1 rounded text-sm transition-colors ${chartType.id === type.id
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                  }`}
                 title={type.label}
               >
                 {type.label.charAt(0)}
