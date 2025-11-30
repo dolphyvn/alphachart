@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Header, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, Header, HTTPException, BackgroundTasks, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime, timedelta
@@ -40,68 +40,117 @@ class SierraChartBatch(BaseModel):
     data: List[SierraChartBar]
     metadata: dict
 
+@router.post("")
 @router.post("/")
 async def receive_market_data(
-    request: SierraChartBar,
+    request: Request,
     background_tasks: BackgroundTasks,
     x_api_key: Optional[str] = Header(None),
     service: MarketDataService = Depends()
 ):
     """
     Receive single bar from Sierra Chart
-    
+
     Sierra Chart posts to this endpoint in real-time mode
+    Accepts both /api/v1/market-data and /api/v1/market-data/
     """
+    # Log the incoming request for debugging
+    import json
+
     # Verify API key
     if not verify_api_key(x_api_key):
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    
-    symbol = request.chart_info.symbol
-    timeframe = f"{request.chart_info.seconds_per_bar}s"
-    timestamp = request.parse_timestamp(request.timestamp)
-    
-    logger.info(f"Received bar: {symbol} @ {timestamp} ({timeframe})")
-    
-    # Store in TimescaleDB
-    await service.store_bar(
-        symbol=symbol,
-        timeframe=timeframe,
-        timestamp=timestamp,
-        open=request.open,
-        high=request.high,
-        low=request.low,
-        close=request.close,
-        volume=request.volume,
-        bid_volume=request.bid_volume,
-        ask_volume=request.ask_volume,
-        number_of_trades=request.number_of_trades,
-        open_interest=request.open_interest
-    )
-    
-    # Schedule background tasks
-    background_tasks.add_task(
-        service.aggregate_to_higher_timeframes,
-        symbol, timeframe, timestamp
-    )
-    
-    background_tasks.add_task(
-        service.update_volume_profile,
-        symbol, timestamp, request.close, request.volume,
-        request.bid_volume, request.ask_volume
-    )
-    
-    background_tasks.add_task(
-        service.broadcast_tick,
-        symbol, request.dict()
-    )
-    
-    return {
-        "status": "success",
-        "symbol": symbol,
-        "timeframe": timeframe
-    }
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+
+    try:
+        # Parse raw JSON to see what Sierra Chart is sending
+        raw_data = await request.json()
+        logger.info(f"Sierra Chart raw data: {json.dumps(raw_data, indent=2)}")
+
+        # Try to validate against our expected format
+        try:
+            chart_bar = SierraChartBar(**raw_data)
+            symbol = chart_bar.chart_info.symbol
+            timeframe = f"{chart_bar.chart_info.seconds_per_bar}s"
+            timestamp = chart_bar.parse_timestamp(chart_bar.timestamp)
+
+            # Extract data from validated object
+            open_price = chart_bar.open
+            high_price = chart_bar.high
+            low_price = chart_bar.low
+            close_price = chart_bar.close
+            volume = chart_bar.volume
+            bid_volume = chart_bar.bid_volume or 0.0
+            ask_volume = chart_bar.ask_volume or 0.0
+            number_of_trades = chart_bar.number_of_trades or 0
+            open_interest = chart_bar.open_interest
+
+        except Exception as validation_error:
+            logger.error(f"Sierra Chart data validation failed: {validation_error}")
+            logger.error(f"Raw data was: {raw_data}")
+
+            # Fallback: try to extract basic fields manually
+            symbol = raw_data.get('symbol', 'UNKNOWN')
+            timeframe = '1m'  # default
+            timestamp = datetime.strptime(raw_data.get('timestamp', '2025-01-01 00:00:00'), "%Y-%m-%d %H:%M:%S")
+
+            open_price = raw_data.get('open', 0.0)
+            high_price = raw_data.get('high', 0.0)
+            low_price = raw_data.get('low', 0.0)
+            close_price = raw_data.get('close', 0.0)
+            volume = raw_data.get('volume', 0.0)
+            bid_volume = raw_data.get('bid_volume', 0.0)
+            ask_volume = raw_data.get('ask_volume', 0.0)
+            number_of_trades = raw_data.get('number_of_trades', 0)
+            open_interest = raw_data.get('open_interest')
+
+        logger.info(f"Processing bar: {symbol} @ {timestamp} ({timeframe}) O:{open_price} H:{high_price} L:{low_price} C:{close_price} V:{volume}")
+
+        # Store in TimescaleDB
+        await service.store_bar(
+            symbol=symbol,
+            timeframe=timeframe,
+            timestamp=timestamp,
+            open=open_price,
+            high=high_price,
+            low=low_price,
+            close=close_price,
+            volume=volume,
+            bid_volume=bid_volume,
+            ask_volume=ask_volume,
+            number_of_trades=number_of_trades,
+            open_interest=open_interest
+        )
+
+        # Schedule background tasks
+        background_tasks.add_task(
+            service.aggregate_to_higher_timeframes,
+            symbol, timeframe, timestamp
+        )
+
+        background_tasks.add_task(
+            service.update_volume_profile,
+            symbol, timestamp, close_price, volume,
+            bid_volume, ask_volume
+        )
+
+        background_tasks.add_task(
+            service.broadcast_tick,
+            symbol, raw_data
+        )
+
+        return {
+            "status": "success",
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "timestamp": timestamp.isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing Sierra Chart data: {str(e)}")
+        raise HTTPException(status_code=422, detail=f"Error processing data: {str(e)}")
 
 @router.post("/batch")
+@router.post("/batch/")
 async def receive_batch(
     request: SierraChartBatch,
     background_tasks: BackgroundTasks,
@@ -200,6 +249,27 @@ async def get_cvd(
         end_time = datetime.utcnow()
     if not start_time:
         start_time = end_time - timedelta(hours=1)
-        
+
     cvd = await service.get_cvd_data(symbol, timeframe, start_time, end_time)
     return cvd
+
+@router.get("/symbols/{symbol}")
+async def get_symbol_info(
+    symbol: str,
+    service: MarketDataService = Depends()
+):
+    """
+    Get detailed information about a specific symbol
+    """
+    symbol_info = await service.get_symbol_info(symbol)
+    return symbol_info
+
+@router.get("/symbols")
+async def get_available_symbols(
+    service: MarketDataService = Depends()
+):
+    """
+    Get list of all available symbols from the database
+    """
+    symbols = await service.get_available_symbols()
+    return {"symbols": symbols}

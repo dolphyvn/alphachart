@@ -43,7 +43,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="TradeFlow Pro API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    redirect_slashes=False  # Disable automatic redirect from /path to /path/
 )
 
 # Middleware

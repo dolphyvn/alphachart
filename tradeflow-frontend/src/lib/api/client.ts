@@ -1,70 +1,132 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://ns3366383.ip-37-187-77.eu:8001/api/v1';
+import { Bar, Symbol, Timeframe, Indicator, OrderFlowData, APIResponse } from '@/types';
 
-export interface BarData {
-    time: string;
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+
+class ApiClient {
+  private baseURL: string;
+
+  constructor(baseURL: string = API_BASE_URL) {
+    this.baseURL = baseURL;
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<APIResponse<T>> {
+    const url = `${this.baseURL}${endpoint}`;
+
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    try {
+      const response = await fetch(url, config);
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.message || `HTTP ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      return {
+        success: true,
+        data: data.data || data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error',
+      };
+    }
+  }
+
+  // Market Data
+  async getMarketData(
+    symbol: string,
+    timeframe: string,
+    limit: number = 500
+  ): Promise<APIResponse<Bar[]>> {
+    return this.request<Bar[]>(`/api/v1/market-data/bars?symbol=${symbol}&timeframe=${timeframe}&limit=${limit}`);
+  }
+
+  async getSymbolInfo(symbol: string): Promise<APIResponse<Symbol>> {
+    return this.request<Symbol>(`/api/v1/symbols/${symbol}`);
+  }
+
+  async searchSymbols(query: string): Promise<APIResponse<Symbol[]>> {
+    return this.request<Symbol[]>(`/api/v1/symbols/search?q=${encodeURIComponent(query)}`);
+  }
+
+  async getAvailableSymbols(): Promise<APIResponse<string[]>> {
+    const response = await this.request<{symbols: string[]}>('/api/v1/market-data/symbols');
+    if (response.success) {
+      return {
+        success: true,
+        data: response.data.symbols
+      };
+    }
+    return response;
+  }
+
+  // Indicators
+  async calculateIndicator(
+    symbol: string,
+    timeframe: string,
+    indicatorType: string,
+    inputs: Record<string, any>
+  ): Promise<APIResponse<Indicator>> {
+    return this.request<Indicator>(`/api/v1/indicators/${indicatorType}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        symbol,
+        timeframe,
+        inputs,
+      }),
+    });
+  }
+
+  // Order Flow
+  async getFootprintData(
+    symbol: string,
+    startTime: string,
+    endTime: string
+  ): Promise<APIResponse<OrderFlowData['footprint']>> {
+    return this.request<OrderFlowData['footprint']>(`/api/v1/orderflow/footprint/${symbol}`, {
+      method: 'POST',
+      body: JSON.stringify({ startTime, endTime }),
+    });
+  }
+
+  async getVolumeProfile(
+    symbol: string,
+    startTime: string,
+    endTime: string
+  ): Promise<APIResponse<OrderFlowData['volumeProfile']>> {
+    return this.request<OrderFlowData['volumeProfile']>(`/api/v1/volume-profile/${symbol}`, {
+      method: 'POST',
+      body: JSON.stringify({ startTime, endTime }),
+    });
+  }
+
+  async getCumulativeDelta(
+    symbol: string,
+    timeframe: string,
+    limit: number = 500
+  ): Promise<APIResponse<OrderFlowData['cvd']>> {
+    return this.request<OrderFlowData['cvd']>(`/api/v1/orderflow/cvd/${symbol}?timeframe=${timeframe}&limit=${limit}`);
+  }
+
+  // WebSocket endpoint
+  getWebSocketURL(): string {
+    const wsProtocol = this.baseURL.startsWith('https') ? 'wss' : 'ws';
+    return `${wsProtocol}://${this.baseURL.replace(/^https?:\/\//, '')}/api/v1/ws/stream`;
+  }
 }
 
-export const apiClient = {
-    async getBars(symbol: string, timeframe: string, limit: number = 500): Promise<BarData[]> {
-        const response = await fetch(`${API_BASE_URL}/market-data/bars?symbol=${symbol}&timeframe=${timeframe}&limit=${limit}`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch market data');
-        }
-        const data = await response.json();
-        return data;
-    },
-
-    async getSMA(symbol: string, timeframe: string, period: number = 14, limit: number = 500): Promise<any[]> {
-        const response = await fetch(`${API_BASE_URL}/indicators/sma?symbol=${symbol}&timeframe=${timeframe}&period=${period}&limit=${limit}`);
-        return response.json();
-    },
-
-    async getEMA(symbol: string, timeframe: string, period: number = 14, limit: number = 500): Promise<any[]> {
-        const response = await fetch(`${API_BASE_URL}/indicators/ema?symbol=${symbol}&timeframe=${timeframe}&period=${period}&limit=${limit}`);
-        return response.json();
-    },
-
-    async getRSI(symbol: string, timeframe: string, period: number = 14, limit: number = 500): Promise<any[]> {
-        const response = await fetch(`${API_BASE_URL}/indicators/rsi?symbol=${symbol}&timeframe=${timeframe}&period=${period}&limit=${limit}`);
-        return response.json();
-    },
-
-    async getMACD(symbol: string, timeframe: string, fast: number = 12, slow: number = 26, signal: number = 9, limit: number = 500): Promise<any[]> {
-        const response = await fetch(`${API_BASE_URL}/indicators/macd?symbol=${symbol}&timeframe=${timeframe}&fast_period=${fast}&slow_period=${slow}&signal_period=${signal}&limit=${limit}`);
-        return response.json();
-    },
-
-    async getBollinger(symbol: string, timeframe: string, period: number = 20, std_dev: number = 2, limit: number = 500): Promise<any[]> {
-        const response = await fetch(`${API_BASE_URL}/indicators/bollinger?symbol=${symbol}&timeframe=${timeframe}&period=${period}&std_dev=${std_dev}&limit=${limit}`);
-        return response.json();
-    },
-
-    async getVolumeProfile(symbol: string, startTime?: string, endTime?: string): Promise<any[]> {
-        let url = `${API_BASE_URL}/market-data/volume-profile?symbol=${symbol}`;
-        if (startTime) url += `&start_time=${startTime}`;
-        if (endTime) url += `&end_time=${endTime}`;
-        const response = await fetch(url);
-        return response.json();
-    },
-
-    async getFootprint(symbol: string, timeframe: string, startTime?: string, endTime?: string): Promise<any[]> {
-        let url = `${API_BASE_URL}/market-data/footprint?symbol=${symbol}&timeframe=${timeframe}`;
-        if (startTime) url += `&start_time=${startTime}`;
-        if (endTime) url += `&end_time=${endTime}`;
-        const response = await fetch(url);
-        return response.json();
-    },
-
-    async getCVD(symbol: string, timeframe: string, startTime?: string, endTime?: string): Promise<any[]> {
-        let url = `${API_BASE_URL}/market-data/cvd?symbol=${symbol}&timeframe=${timeframe}`;
-        if (startTime) url += `&start_time=${startTime}`;
-        if (endTime) url += `&end_time=${endTime}`;
-        const response = await fetch(url);
-        return response.json();
-    }
-};
+export const apiClient = new ApiClient();

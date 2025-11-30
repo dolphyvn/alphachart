@@ -1,86 +1,140 @@
-import { useState, useEffect, useCallback } from 'react';
-import { apiClient, BarData } from '@/lib/api/client';
-import { wsClient } from '@/lib/api/websocket';
-import { Bar } from '@/types/chart';
+'use client';
 
-export function useMarketData(symbol: string, timeframe: string) {
-    const [bars, setBars] = useState<Bar[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
+import { Bar } from '@/types';
+import { apiClient } from '@/lib/api/client';
+import { MockMarketDataService } from '@/lib/api/mock-service';
 
-    // Fetch historical data
-    useEffect(() => {
-        const fetchHistory = async () => {
-            setIsLoading(true);
-            try {
-                const data = await apiClient.getBars(symbol, timeframe);
-                // Convert API data to internal Bar format
-                const formattedBars: Bar[] = data.map((b: any) => ({
-                    timestamp: new Date(b.time || b.timestamp).getTime() / 1000, // Convert ISO to unix timestamp (seconds)
-                    open: b.open,
-                    high: b.high,
-                    low: b.low,
-                    close: b.close,
-                    volume: b.volume
-                })).reverse(); // Ensure chronological order (oldest first)
+interface UseMarketDataOptions {
+  symbol: string;
+  timeframe: string;
+  enabled?: boolean;
+  refetchInterval?: number;
+}
 
-                setBars(formattedBars);
-                setError(null);
-            } catch (err) {
-                console.error(err);
-                setError('Failed to load market data');
-            } finally {
-                setIsLoading(false);
-            }
-        };
+export function useMarketData({
+  symbol,
+  timeframe,
+  enabled = true,
+  refetchInterval = 1000, // Refresh every second by default
+}: UseMarketDataOptions) {
+  const queryClient = useQueryClient();
+  const mockService = useRef(MockMarketDataService.getInstance());
+  const realtimeIntervalRef = useRef<(() => void) | null>(null);
 
-        fetchHistory();
-    }, [symbol, timeframe]);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['market-data', symbol, timeframe],
+    queryFn: async () => {
+      // Try to fetch from real API first
+      try {
+        const response = await apiClient.getMarketData(symbol, timeframe, 500);
+        if (response.success && response.data) {
+          return response.data;
+        }
+      } catch (error) {
+        console.warn('API not available, using mock data:', error);
+      }
 
-    // Handle real-time updates
-    useEffect(() => {
-        wsClient.connect();
-        wsClient.subscribe([symbol]);
+      // Fallback to mock data
+      return mockService.current.generateHistoricalData(500);
+    },
+    enabled: enabled && !!symbol && !!timeframe,
+    refetchInterval: false, // We'll handle real-time updates ourselves
+    staleTime: timeframe.includes('s') ? 500 : 30000, // 0.5s for seconds, 30s for minutes+
+    retry: 1,
+  });
 
-        const handleMessage = (message: any) => {
-            if (message.type === 'tick' && message.symbol === symbol) {
-                const tick = message.data;
-                setBars(prevBars => {
-                    if (prevBars.length === 0) return prevBars;
+  // Set up real-time updates for second-based timeframes
+  useEffect(() => {
+    if (!timeframe.includes('s') || !symbol || !enabled) {
+      // Clean up any existing interval
+      if (realtimeIntervalRef.current) {
+        realtimeIntervalRef.current();
+        realtimeIntervalRef.current = null;
+      }
+      return;
+    }
 
-                    const lastBar = prevBars[prevBars.length - 1];
-                    const tickTime = new Date(tick.timestamp).getTime() / 1000;
+    // Start real-time updates
+    const cleanup = mockService.current.startRealtimeUpdates((newBar) => {
+      queryClient.setQueryData(
+        ['market-data', symbol, timeframe],
+        (oldData: Bar[] | undefined) => {
+          if (!oldData) return [newBar];
 
-                    // Check if tick belongs to current bar or new bar
-                    // This logic depends on timeframe. For simplicity assuming 1m timeframe alignment
-                    // In a real app, we need robust timeframe logic
+          // Remove the last bar if it's from the same second, then add the new bar
+          const filteredData = oldData.filter(bar => bar.time !== newBar.time);
+          return [...filteredData, newBar].slice(-500);
+        }
+      );
+    }, refetchInterval);
 
-                    // Simple update logic: if tick is newer than last bar + timeframe, create new bar
-                    // Otherwise update last bar
+    realtimeIntervalRef.current = cleanup;
 
-                    // For now, let's just update the last bar's close, high, low, volume
-                    // This is a simplification. Real logic needs to handle bar closing.
+    return () => {
+      if (realtimeIntervalRef.current) {
+        realtimeIntervalRef.current();
+        realtimeIntervalRef.current = null;
+      }
+    };
+  }, [symbol, timeframe, enabled, refetchInterval, queryClient]);
 
-                    const updatedBar = {
-                        ...lastBar,
-                        close: tick.price,
-                        high: Math.max(lastBar.high, tick.price),
-                        low: Math.min(lastBar.low, tick.price),
-                        volume: lastBar.volume + (tick.volume || 0)
-                    };
+  // Function to update a single bar (for real-time updates)
+  const updateBar = (newBar: Bar) => {
+    queryClient.setQueryData(
+      ['market-data', symbol, timeframe],
+      (oldData: Bar[] | undefined) => {
+        if (!oldData) return [newBar];
 
-                    return [...prevBars.slice(0, -1), updatedBar];
-                });
-            }
-        };
+        // Find if the bar already exists
+        const existingIndex = oldData.findIndex(bar => bar.time === newBar.time);
 
-        wsClient.addMessageHandler(handleMessage);
+        if (existingIndex >= 0) {
+          // Update existing bar
+          const updatedData = [...oldData];
+          updatedData[existingIndex] = newBar;
+          return updatedData;
+        } else {
+          // Add new bar and keep only the most recent ones
+          const updatedData = [newBar, ...oldData].slice(0, 500);
+          return updatedData.sort((a, b) =>
+            new Date(a.time).getTime() - new Date(b.time).getTime()
+          );
+        }
+      }
+    );
+  };
 
-        return () => {
-            wsClient.unsubscribe([symbol]);
-            wsClient.removeMessageHandler(handleMessage);
-        };
-    }, [symbol]);
+  // Function to add multiple bars (for batch updates)
+  const addBars = (newBars: Bar[]) => {
+    queryClient.setQueryData(
+      ['market-data', symbol, timeframe],
+      (oldData: Bar[] | undefined) => {
+        if (!oldData) return newBars;
 
-    return { bars, isLoading, error };
+        // Combine and deduplicate
+        const combined = [...newBars, ...oldData];
+        const uniqueBars = combined.filter((bar, index, self) =>
+          index === self.findIndex(b => b.time === bar.time)
+        );
+
+        // Sort and limit
+        return uniqueBars
+          .sort((a, b) =>
+            new Date(a.time).getTime() - new Date(b.time).getTime()
+          )
+          .slice(-500);
+      }
+    );
+  };
+
+  return {
+    bars: data || [],
+    isLoading,
+    error: error ? (error as Error).message : null,
+    refetch,
+    updateBar,
+    addBars,
+  };
 }

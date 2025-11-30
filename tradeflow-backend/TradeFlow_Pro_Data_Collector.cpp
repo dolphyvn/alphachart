@@ -214,7 +214,7 @@ SCSFExport scsf_TradeFlowProDataCollector(SCStudyInterfaceRef sc)
 
         // Default inputs
         Input_APIEndpoint.Name = "TradeFlow API Endpoint";
-        Input_APIEndpoint.SetString("http://ns3366383.ip-37-187-77.eu:8001/api/v1/market-data");
+        Input_APIEndpoint.SetString("http://ns3366383.ip-37-187-77.eu:8001/api/v1/market-data/");
 
         Input_Enabled.Name = "Enable Data Collection";
         Input_Enabled.SetYesNo(0);  // Disabled by default
@@ -520,8 +520,13 @@ SCSFExport scsf_TradeFlowProDataCollector(SCStudyInterfaceRef sc)
                 SCString apiURL = Input_APIEndpoint.GetString();
                 SCString apiKey = Input_APIKey.GetString();
 
-                // Add /batch to the URL for TradeFlow batch endpoint
-                apiURL = apiURL + "/batch";
+                // Add batch to the URL for TradeFlow batch endpoint
+                // Remove trailing slash to avoid double slash
+                SCString baseURL = Input_APIEndpoint.GetString();
+                if (baseURL.GetLength() > 0 && baseURL[baseURL.GetLength() - 1] == '/') {
+                    baseURL = baseURL.SubString(0, baseURL.GetLength() - 1);
+                }
+                apiURL = baseURL + "/batch";
 
                 // Prepare headers
                 n_ACSIL::s_HTTPHeader headers[2];
@@ -638,8 +643,13 @@ SCSFExport scsf_TradeFlowProDataCollector(SCStudyInterfaceRef sc)
                 SCString apiURL = Input_APIEndpoint.GetString();
                 SCString apiKey = Input_APIKey.GetString();
 
-                // Add /batch to the URL
-                apiURL = apiURL + "/batch";
+                // Add batch to the URL
+                // Remove trailing slash to avoid double slash
+                SCString baseURL = Input_APIEndpoint.GetString();
+                if (baseURL.GetLength() > 0 && baseURL[baseURL.GetLength() - 1] == '/') {
+                    baseURL = baseURL.SubString(0, baseURL.GetLength() - 1);
+                }
+                apiURL = baseURL + "/batch";
 
                 // Prepare headers
                 n_ACSIL::s_HTTPHeader headers[2];
