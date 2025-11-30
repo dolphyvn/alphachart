@@ -64,8 +64,8 @@ class ApiClient {
   }
 
   async getAvailableSymbols(): Promise<APIResponse<string[]>> {
-    const response = await this.request<{symbols: string[]}>('/api/v1/market-data/symbols');
-    if (response.success) {
+    const response = await this.request<{ symbols: string[] }>('/api/v1/market-data/symbols');
+    if (response.success && response.data) {
       return {
         success: true,
         data: response.data.symbols
