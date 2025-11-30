@@ -150,7 +150,7 @@ export function MainLayout() {
               console.log('Current layout.orderFlow:', layout.orderFlow);
               const newConfig = {
                 enabled: !layout.orderFlow.enabled,
-                type: !layout.orderFlow.enabled ? 'cvd' : 'none'
+                type: (!layout.orderFlow.enabled ? 'cvd' : 'none') as 'footprint' | 'volume-profile' | 'cvd' | 'none'
               };
               console.log('About to set new config:', newConfig);
               updateOrderFlowConfig(newConfig);

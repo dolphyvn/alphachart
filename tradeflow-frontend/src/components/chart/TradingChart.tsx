@@ -138,7 +138,7 @@ export function TradingChart({
     setTooltipState(prev => {
       // Check if the bar or position actually changed
       if (
-        prev.bar?.timestamp === bar?.timestamp &&
+        prev.bar?.time === bar?.time &&
         prev.x === x &&
         prev.y === y &&
         prev.visible === !!bar
