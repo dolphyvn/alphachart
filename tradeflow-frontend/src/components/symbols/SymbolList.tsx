@@ -50,12 +50,11 @@ export function SymbolList() {
             onClick={() => setCurrentSymbol({
               symbol,
               name: symbol,
-              asset_type: 'UNKNOWN',
+              asset_type: 'forex' as const,
               exchange: 'UNKNOWN'
             })}
-            className={`p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted ${
-              currentSymbol.symbol === symbol ? 'bg-primary/10 border-primary' : 'bg-background'
-            }`}
+            className={`p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted ${currentSymbol.symbol === symbol ? 'bg-primary/10 border-primary' : 'bg-background'
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
