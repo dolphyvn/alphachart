@@ -185,9 +185,30 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
 
       // Sync time scale with main chart and fit content
       setTimeout(() => {
-        if (chartRef.current) {
+        if (chartRef.current && data.length > 0) {
           console.log('Fitting chart content...');
-          chartRef.current.timeScale().fitContent();
+          const timeScale = chartRef.current.timeScale();
+
+          // Get the time range of our data
+          const timeRange = {
+            from: Math.min(...data.map(d => new Date(d.time).getTime() / 1000)),
+            to: Math.max(...data.map(d => new Date(d.time).getTime() / 1000))
+          };
+
+          console.log('CVD data time range:', timeRange);
+
+          // Fit to content first
+          timeScale.fitContent();
+
+          // Ensure the full data range is visible by extending if needed
+          const visibleRange = timeScale.getVisibleRange();
+          if (visibleRange && (visibleRange.from > timeRange.from || visibleRange.to < timeRange.to)) {
+            console.log('Extending visible range to match data:', {
+              current: visibleRange,
+              data: timeRange
+            });
+            timeScale.setVisibleRange(timeRange.from, timeRange.to);
+          }
         }
       }, 100);
 
@@ -196,10 +217,24 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
     }
   }, [data, config]);
 
-  // Handle resize
+  // Handle resize with forced reflow
   useEffect(() => {
-    if (chartRef.current) {
+    if (chartRef.current && containerRef.current) {
+      console.log('CVD Pane resizing to:', { width, height });
+
+      // Force a reflow by ensuring container has correct dimensions
+      containerRef.current.style.width = `${width}px`;
+      containerRef.current.style.height = `${height}px`;
+
+      // Apply chart options
       chartRef.current.applyOptions({ width, height });
+
+      // Force re-render after resize
+      setTimeout(() => {
+        if (chartRef.current) {
+          chartRef.current.timeScale().fitContent();
+        }
+      }, 50);
     }
   }, [width, height]);
 
@@ -234,8 +269,8 @@ export function CVDPane({ data, config, width, height, theme }: CVDPaneProps) {
   const stats = getStatistics();
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
-      <div ref={containerRef} className="w-full h-full" style={{ width: '100%', height: '100%' }} />
+    <div className="relative w-full h-full overflow-hidden" style={{ width: '100%', height: '100%' }}>
+      <div ref={containerRef} className="w-full h-full" style={{ width: '100%', height: '100%', display: 'block' }} />
 
       {/* Statistics overlay */}
       {stats && (
